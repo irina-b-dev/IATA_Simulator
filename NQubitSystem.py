@@ -40,7 +40,7 @@ class NQubitSystem:
         print("")
     
     def complex_encoder(self, z):
-        return {"real": z.real, "imag": z.imag}
+        return {"real": float(z.real), "imag": float(z.imag)}
 
     def complex_decoder(self, d):
         return complex(d["real"], d["imag"])

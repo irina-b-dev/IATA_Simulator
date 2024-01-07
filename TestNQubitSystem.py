@@ -145,6 +145,7 @@ def test_basic_gates():
     print(f"After measurement: {quantum_system.produce_measurement()}")
     print("\nBasic gates tests successful!")
     quantum_system.print_all_gates_applied()
+    return quantum_system
 
 def test_import_export_gate():
     gate = gates_map["TOFFOLI"][0]
@@ -223,13 +224,25 @@ def test_custom_gate():
 
     return quantum_system
 
-def test_import_export_circuit():
+def test_import_export_circuit_custom():
     quantum_system = test_custom_gate()
-    quantum_system.export_circuit("circuit.json")
+    json_file = "circuit_custom.json"
 
-    quantum_system_imported = NQubitSystem.import_circuit("circuit.json")
+    quantum_system.export_circuit(json_file)
+    quantum_system_imported = NQubitSystem.import_circuit(json_file)
     quantum_system_imported.print_state()
     assert np.allclose(quantum_system_imported.state, [0.25-0.60355j, 0, 0.60355+0.25j, 0, -0.25-0.10355j, 0, 0.10355-0.25j, 0], atol=1e-6)
+    quantum_system_imported.print_all_gates_applied()
+    print("Import/Export test successful!")
+
+def test_import_export_circuit_basic():
+    quantum_system = test_basic_gates()
+    json_file = "circuit_basic.json"
+
+    quantum_system.export_circuit(json_file)
+    quantum_system_imported = NQubitSystem.import_circuit(json_file)
+    quantum_system_imported.print_state()
+    assert np.allclose(quantum_system_imported.state, [0, 0.5, -0.35355, +0.35355j, -0.25-0.25j, -0.35355j, -0.5j, 0], atol=1e-6)
     quantum_system_imported.print_all_gates_applied()
     print("Import/Export test successful!")
     
@@ -253,5 +266,6 @@ if __name__ == "__main__":
     #test_basic_gates()
     #test_import_export_gate()
     #test_custom_gate()
-    test_import_export_circuit()
+    test_import_export_circuit_custom()
+    test_import_export_circuit_basic()
     #test_noise()
