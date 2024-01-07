@@ -3,6 +3,7 @@ from constants import gates_map
 from scipy.linalg import norm
 import matplotlib.pyplot as plt
 import random
+import json
 
 # The n-qubit system's state is as an array of 2^n coefficients (one for each possible value of the qubits).
 class NQubitSystem:
@@ -19,6 +20,7 @@ class NQubitSystem:
         for i, prob in enumerate(self.state):
             binary_string = format(i, f"0{self.n_qubits}b")
             print(f"{binary_string}: {prob:.6f}")
+        print("\n")
 
     def print_probabilities(self):
         print(f"======= {self.n_qubits}-qubit system's probabilities =======")
@@ -29,7 +31,41 @@ class NQubitSystem:
         print("\n")
 
     def print_all_gates_applied(self):
-        print(f"Gates applied: {self.gates_applied}")
+        if len(self.gates_applied) == 0:
+            return
+        print("Gates applied:")
+        for gate_applied in self.gates_applied:
+            idx, gate_name, qubits_affected, single_gate, system_gate = gate_applied
+            print(f"Step {idx}: {gate_name} on qubits {qubits_affected}")
+        print("")
+    
+    def export_circuit(self, file_path):
+        if len(self.gates_applied) == 0:
+            return
+        circuit = {
+            "initial_state": self.initial_state,
+            "gates_applied": []
+        }
+        for gate_applied in self.gates_applied:
+            idx, gate_name, qubits_affected, single_gate, system_gate = gate_applied
+            circuit["gates_applied"].append({
+                "idx": idx,
+                "gate_name": gate_name,
+                "qubits_affected": qubits_affected,
+                "single_gate": np.array2string(single_gate),
+                "system_gate": np.array2string(system_gate)
+            })
+        circuit_json = json.dumps(circuit, indent=4)
+        with open(file_path, "w") as json_file:
+            json_file.write(circuit_json)
+
+        print(f"Saved JSON data to {file_path}")
+
+    @staticmethod
+    def import_circuit(file_path):
+        with open(file_path, "r") as json_file:
+            data = json.load(json_file)
+            print(data)
 
     # Initialize the state as |0...0>
     def __init__(self, n_qubits):
@@ -48,7 +84,10 @@ class NQubitSystem:
         self.state = np.zeros(2 ** self.n_qubits, dtype=complex)
         self.state[index] = 1.0
         assert self.is_valid_state()
-        self.gates_applied.append((len(self.gates_applied), qubit_values))
+        self.initial_state = qubit_values
+
+    def print_initial_qubits(self):
+        print(f"Initial qubits (1st qubit starts from the left): {self.initial_state}")
 
     def quantum_noise(self):
             p = float(input("Probability for noise:"))
@@ -89,7 +128,7 @@ class NQubitSystem:
         qubits_affected = [starting_qubit + i for i in range(n_gate)]
         gate_name = [key for key, value in gates_map.items() if gate.shape == value[0].shape and np.all(value[0] == gate)][0]
         #self.gates_applied.append((len(self.gates_applied), gate_name, gate, qubits_affected, gate_matrix))
-        self.gates_applied.append((len(self.gates_applied), gate_name, qubits_affected))
+        self.gates_applied.append((len(self.gates_applied)+1, gate_name, qubits_affected, gate, gate_matrix))
 
     def apply_H_gate(self, target_qubit, noise = False):
         gate = gates_map["H"][0]
