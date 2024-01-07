@@ -211,6 +211,13 @@ def test_custom_gate():
     quantum_system.print_all_gates_applied()
     assert np.allclose(quantum_system.state, [0, 0.60355+0.25j, 0, -0.25+0.60355j, 0, 0.10355-0.25j, 0, 0.25+0.10355j], atol=1e-6)
 
+    print("\nApply Y and T gates on qubit 2!\n")
+    gate = np.dot(gates_map["T"][0], gates_map["Y"][0])
+    gates_map["Y_T"] = (gate, int(np.log2(len(gate))))
+    quantum_system.apply_gate(gate, n_gate = 1, starting_qubit = 2)
+    quantum_system.print_state()
+    quantum_system.print_all_gates_applied()
+    assert np.allclose(quantum_system.state, [0.25-0.60355j, 0, 0.60355+0.25j, 0, -0.25-0.10355j, 0, 0.10355-0.25j, 0], atol=1e-6)
 
     print("\nCustom gates tests successful!")
 
