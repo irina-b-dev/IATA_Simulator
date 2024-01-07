@@ -394,11 +394,11 @@ class NQubitSystem:
 
 
     def calculate_density_matrix(self):
-        density_matrix = np.tensordot(self.state, self.state, axes=0)
+        density_matrix = np.tensordot(self.state, self.state.conj(), axes=0)
         return density_matrix
 
     def plot_density_matrix(self):
-        density_matrix = np.tensordot(self.state, self.state, axes=0)
+        density_matrix = np.tensordot(self.state, self.state.conj(), axes=0)
         density_matrix = abs(density_matrix)
         plt.imshow(density_matrix, cmap='viridis')
         plt.colorbar()
