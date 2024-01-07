@@ -6,6 +6,8 @@ import random
 import json
 
 # The n-qubit system's state is as an array of 2^n coefficients (one for each possible value of the qubits).
+
+
 class NQubitSystem:
     def is_valid_state(self, tolerance=1e-10):
         # Ensure it's a column vector (shape is (n, 1) or (n,))
@@ -38,7 +40,7 @@ class NQubitSystem:
             idx, gate_name, qubits_affected, single_gate, system_gate = gate_applied
             print(f"Step {idx}: {gate_name} on qubits {qubits_affected}")
         print("")
-    
+
     def complex_encoder(self, z):
         return {"real": float(z.real), "imag": float(z.imag)}
 
@@ -55,8 +57,10 @@ class NQubitSystem:
         for gate_applied in self.gates_applied:
             idx, gate_name, qubits_affected, single_gate, system_gate = gate_applied
 
-            single_gate = np.array([[self.complex_encoder(z) for z in row] for row in single_gate]).tolist()
-            system_gate = np.array([[self.complex_encoder(z) for z in row] for row in system_gate]).tolist()
+            single_gate = np.array([[self.complex_encoder(z)
+                                   for z in row] for row in single_gate]).tolist()
+            system_gate = np.array([[self.complex_encoder(z)
+                                   for z in row] for row in system_gate]).tolist()
 
             circuit["gates_applied"].append({
                 "idx": idx,
@@ -76,7 +80,7 @@ class NQubitSystem:
         with open(file_path, "r") as json_file:
             circuit = json.load(json_file)
             initial_state = circuit["initial_state"]
-            quantum_system = NQubitSystem(n_qubits = len(initial_state))
+            quantum_system = NQubitSystem(n_qubits=len(initial_state))
             quantum_system.initialize_state(initial_state)
             gates_applied = circuit["gates_applied"]
             for gate_applied in gates_applied:
@@ -84,10 +88,13 @@ class NQubitSystem:
                 gate_name = gate_applied["gate_name"]
                 qubits_affected = gate_applied["qubits_affected"]
                 single_gate = gate_applied["single_gate"]
-                single_gate = np.array([[quantum_system.complex_decoder(d) for d in row] for row in single_gate])
+                single_gate = np.array(
+                    [[quantum_system.complex_decoder(d) for d in row] for row in single_gate])
                 system_gate = gate_applied["system_gate"]
-                system_gate = np.array([[quantum_system.complex_decoder(d) for d in row] for row in system_gate])
-                quantum_system.apply_full_gate(idx, gate_name, qubits_affected, single_gate, system_gate)
+                system_gate = np.array(
+                    [[quantum_system.complex_decoder(d) for d in row] for row in system_gate])
+                quantum_system.apply_full_gate(
+                    idx, gate_name, qubits_affected, single_gate, system_gate)
 
         return quantum_system
 
@@ -96,7 +103,7 @@ class NQubitSystem:
         if n_qubits <= 0:
             raise ValueError("Number of qubits must be a positive integer")
         self.n_qubits = n_qubits
-        self.state = np.zeros(2**n_qubits, dtype = complex)
+        self.state = np.zeros(2**n_qubits, dtype=complex)
         self.state[0] = 1.0  # Initialize to |000...0>
         assert self.is_valid_state()
         self.gates_applied = []
@@ -104,34 +111,37 @@ class NQubitSystem:
     # The function receives an array of desired value for each qubit, e.g. `[0,1,0,0]` for a 4-qubit system and sets the state accordingly.
     def initialize_state(self, qubit_values):
         assert len(qubit_values) == self.n_qubits
-        index = int(''.join(map(str, qubit_values)), 2) # Creates a string from the array, e.g. [0,1,1] -> "011" then converts from binary to int to get the position
+        # Creates a string from the array, e.g. [0,1,1] -> "011" then converts from binary to int to get the position
+        index = int(''.join(map(str, qubit_values)), 2)
         self.state = np.zeros(2 ** self.n_qubits, dtype=complex)
         self.state[index] = 1.0
         assert self.is_valid_state()
         self.initial_state = qubit_values
 
     def print_initial_qubits(self):
-        print(f"Initial qubits (1st qubit starts from the left): {self.initial_state}")
+        print(
+            f"Initial qubits (1st qubit starts from the left): {self.initial_state}")
 
     def quantum_noise(self):
-            p = float(input("Probability for noise:"))
-            target = random.randrange(self.n_qubits)
-            if random.random() < p:
-                self.apply_X_gate(target, False)
-            if random.random() < p:
-                self.apply_Z_gate(target, False)
+        p = float(input("Probability for noise:"))
+        target = random.randrange(self.n_qubits)
+        if random.random() < p:
+            self.apply_X_gate(target, False)
+        if random.random() < p:
+            self.apply_Z_gate(target, False)
 
-    def apply_full_gate(self, idx, gate_name, qubits_affected, single_gate, system_gate, noise = False):
+    def apply_full_gate(self, idx, gate_name, qubits_affected, single_gate, system_gate, noise=False):
         self.state = np.dot(system_gate, self.state)
-        
+
         if noise == True:
             self.quantum_noise()
 
         assert self.is_valid_state()
-        self.gates_applied.append((idx, gate_name, qubits_affected, single_gate, system_gate))
+        self.gates_applied.append(
+            (idx, gate_name, qubits_affected, single_gate, system_gate))
 
     # Apply general gate to the state
-    def apply_gate(self, gate, n_gate = -1, starting_qubit = 0, noise = False):
+    def apply_gate(self, gate, n_gate=-1, starting_qubit=0, noise=False):
         assert 0 <= starting_qubit <= self.n_qubits - n_gate
 
         if n_gate == -1:
@@ -149,7 +159,7 @@ class NQubitSystem:
             else:
                 gate_matrix = np.kron(gate_matrix, I)
                 qubit += 1
-        
+
         # Update the state by applying the gate matrix
         self.state = np.dot(gate_matrix, self.state)
 
@@ -159,81 +169,83 @@ class NQubitSystem:
         assert self.is_valid_state()
 
         qubits_affected = [starting_qubit + i for i in range(n_gate)]
-        gate_name = [key for key, value in gates_map.items() if gate.shape == value[0].shape and np.all(value[0] == gate)][0]
-        #self.gates_applied.append((len(self.gates_applied), gate_name, gate, qubits_affected, gate_matrix))
-        self.gates_applied.append((len(self.gates_applied)+1, gate_name, qubits_affected, gate, gate_matrix))
+        gate_name = [key for key, value in gates_map.items(
+        ) if gate.shape == value[0].shape and np.all(value[0] == gate)][0]
+        # self.gates_applied.append((len(self.gates_applied), gate_name, gate, qubits_affected, gate_matrix))
+        self.gates_applied.append(
+            (len(self.gates_applied)+1, gate_name, qubits_affected, gate, gate_matrix))
 
-    def apply_H_gate(self, target_qubit, noise = False):
+    def apply_H_gate(self, target_qubit, noise=False):
         gate = gates_map["H"][0]
         n_gate = gates_map["H"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
 
-    def apply_X_gate(self, target_qubit, noise = False):
+    def apply_X_gate(self, target_qubit, noise=False):
         gate = gates_map["X"][0]
         n_gate = gates_map["X"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
-        
-    def apply_Y_gate(self, target_qubit, noise = False):
+
+    def apply_Y_gate(self, target_qubit, noise=False):
         gate = gates_map["Y"][0]
         n_gate = gates_map["Y"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
-        
-    def apply_Z_gate(self, target_qubit, noise = False):
+
+    def apply_Z_gate(self, target_qubit, noise=False):
         gate = gates_map["Z"][0]
         n_gate = gates_map["Z"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
-        
-    def apply_T_gate(self, target_qubit, noise = False):
+
+    def apply_T_gate(self, target_qubit, noise=False):
         gate = gates_map["T"][0]
         n_gate = gates_map["T"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
-    
-    def apply_S_gate(self, target_qubit, noise = False):
+
+    def apply_S_gate(self, target_qubit, noise=False):
         gate = gates_map["S"][0]
         n_gate = gates_map["S"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
-    
-    def apply_CNOT_gate(self, target_qubit, noise = False):
+
+    def apply_CNOT_gate(self, target_qubit, noise=False):
         gate = gates_map["CNOT"][0]
         n_gate = gates_map["CNOT"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
-    
-    def apply_CH_gate(self, target_qubit, noise = False):
+
+    def apply_CH_gate(self, target_qubit, noise=False):
         gate = gates_map["CH"][0]
         n_gate = gates_map["CH"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
-        
-    def apply_CY_gate(self, target_qubit, noise = False):
+
+    def apply_CY_gate(self, target_qubit, noise=False):
         gate = gates_map["CY"][0]
         n_gate = gates_map["CY"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
-        
-    def apply_CZ_gate(self, target_qubit, noise = False):
+
+    def apply_CZ_gate(self, target_qubit, noise=False):
         gate = gates_map["CZ"][0]
         n_gate = gates_map["CZ"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
-        
-    def apply_CT_gate(self, target_qubit, noise = False):
+
+    def apply_CT_gate(self, target_qubit, noise=False):
         gate = gates_map["CT"][0]
         n_gate = gates_map["CT"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
-        
-    def apply_CS_gate(self, target_qubit, noise = False):
+
+    def apply_CS_gate(self, target_qubit, noise=False):
         gate = gates_map["CS"][0]
         n_gate = gates_map["CS"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
-    
-    def apply_SWAP_gate(self, target_qubit, noise = False):
+
+    def apply_SWAP_gate(self, target_qubit, noise=False):
         gate = gates_map["SWAP"][0]
         n_gate = gates_map["SWAP"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
-    
-    def apply_CNOT10_gate(self, target_qubit, noise = False):
+
+    def apply_CNOT10_gate(self, target_qubit, noise=False):
         gate = gates_map["CNOT10"][0]
         n_gate = gates_map["CNOT10"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
-    
-    def apply_TOFFOLI_gate(self, target_qubit, noise = False):
+
+    def apply_TOFFOLI_gate(self, target_qubit, noise=False):
         gate = gates_map["TOFFOLI"][0]
         n_gate = gates_map["TOFFOLI"][1]
         self.apply_gate(gate, n_gate, target_qubit, noise)
@@ -246,48 +258,49 @@ class NQubitSystem:
             data[key] = value
         courses = list(data.keys())
         values = list(data.values())
-      
-        fig = plt.figure(figsize = (8, 4))
-     
+
+        fig = plt.figure(figsize=(8, 4))
+
         # creating the bar plot
-        plt.bar(courses, values, color ='maroon', 
-            width = 0.4)
-     
+        plt.bar(courses, values, color='maroon',
+                width=0.4)
+
         plt.xlabel("qubit number")
         plt.ylabel("probabilities")
         plt.title("probabilities of measuring 0 in computational basis")
         plt.show()
 
     def produce_measurement(self):
-        projectors=[np.array([[1,0],[0,0]]), np.array([[0,0],[0,1]]) ]
-        
-        def project(i,j,self):
+        projectors = [np.array([[1, 0], [0, 0]]), np.array([[0, 0], [0, 1]])]
+
+        def project(i, j, self):
             shape_tuple = ()
             for q in range(self.n_qubits):
                 shape_tuple = shape_tuple + (2,)
-            
-            modified_state=np.reshape(self.state, shape_tuple)
-            projected=np.tensordot(projectors[j],modified_state,(1,i))
-            return np.moveaxis(projected,0,i)
-        
+
+            modified_state = np.reshape(self.state, shape_tuple)
+            projected = np.tensordot(projectors[j], modified_state, (1, i))
+            return np.moveaxis(projected, 0, i)
+
         measurements = np.zeros(self.n_qubits, dtype=int)
         self.probabilities = np.zeros(self.n_qubits, dtype=float)
         for i in range(self.n_qubits):
-            projected=project(i,0,self) 
-            #print(projected)
-            norm_projected=norm(projected.flatten())
-            #measurements = np.zeros(self.n_qubits, dtype=int)
-            print("No qubit {}. Probability to be 0: {}".format(i, norm_projected**2))
+            projected = project(i, 0, self)
+            # print(projected)
+            norm_projected = norm(projected.flatten())
+            # measurements = np.zeros(self.n_qubits, dtype=int)
+            print("No qubit {}. Probability to be 0: {}".format(
+                i, norm_projected**2))
             self.probabilities[i] = norm_projected**2
-            if np.random.random()<norm_projected**2: # Sample according to probability distribution
-                #print(projected/norm_projected)
+            if np.random.random() < norm_projected**2:  # Sample according to probability distribution
+                # print(projected/norm_projected)
                 measurement_result = 0
             else:
-                projected=project(i,1,self)
-                #print(projected/norm(projected))
+                projected = project(i, 1, self)
+                # print(projected/norm(projected))
                 measurement_result = 1
             measurements[i] = measurement_result
-        
+
         return measurements.tolist()
 
     def produce_measurement_2(self):
@@ -295,14 +308,16 @@ class NQubitSystem:
         probabilities = np.abs(self.state) ** 2
 
         # Randomly select a state based on these probabilities
-        measured_state_index = np.random.choice(len(self.state), p=probabilities)
+        measured_state_index = np.random.choice(
+            len(self.state), p=probabilities)
 
         # Convert the state index to binary representation and then to a list of qubits
         # Format the binary string to have the same length as the number of qubits
-        binary_state = format(measured_state_index, '0' + str(self.n_qubits) + 'b')
+        binary_state = format(measured_state_index,
+                              '0' + str(self.n_qubits) + 'b')
 
         # Convert the binary string to a list of integers (0s and 1s)
-        #measured_qubits = [int(bit) for bit in binary_state]
+        # measured_qubits = [int(bit) for bit in binary_state]
         return binary_state
 
     def plot_state_probabilities_2(self):
@@ -310,7 +325,8 @@ class NQubitSystem:
         probabilities = np.abs(self.state)**2
 
         # Generate labels for the x-axis representing the binary states
-        binary_states = [format(i, '0' + str(self.n_qubits) + 'b') for i in range(2**self.n_qubits)]
+        binary_states = [format(i, '0' + str(self.n_qubits) + 'b')
+                         for i in range(2**self.n_qubits)]
 
         # Create a bar chart
         plt.bar(binary_states, probabilities)
@@ -324,27 +340,28 @@ class NQubitSystem:
         plt.show()
 
     def produce_specific_measurement(self, qubit):
-        projectors=[np.array([[1,0],[0,0]]), np.array([[0,0],[0,1]]) ]
-        
-        def project(i,j,self):
+        projectors = [np.array([[1, 0], [0, 0]]), np.array([[0, 0], [0, 1]])]
+
+        def project(i, j, self):
             shape_tuple = ()
             for q in range(self.n_qubits):
                 shape_tuple = shape_tuple + (2,)
-            
-            modified_state=np.reshape(self.state, shape_tuple)
-            projected=np.tensordot(projectors[j],modified_state,(1,i))
-            return np.moveaxis(projected,0,i)
-        
-        projected=project(qubit,0,self) 
-        norm_projected=norm(projected.flatten())
-        print("No qubit {}. Probability to be 0: {}".format(qubit, norm_projected**2))
 
-        if np.random.random()<norm_projected**2: 
+            modified_state = np.reshape(self.state, shape_tuple)
+            projected = np.tensordot(projectors[j], modified_state, (1, i))
+            return np.moveaxis(projected, 0, i)
+
+        projected = project(qubit, 0, self)
+        norm_projected = norm(projected.flatten())
+        print("No qubit {}. Probability to be 0: {}".format(
+            qubit, norm_projected**2))
+
+        if np.random.random() < norm_projected**2:
             measurement_result = 0
         else:
-            projected=project(qubit,1,self)
+            projected = project(qubit, 1, self)
             measurement_result = 1
-        
+
         return measurement_result
 
     def control_gate(self, control_qubit, target_qubit, gate_matrix, name=-1):
@@ -354,17 +371,36 @@ class NQubitSystem:
         M1 = np.eye(1)
         M2 = np.eye(1)
 
-        if(target_qubit>control_qubit):
+        if (target_qubit > control_qubit):
             M1 = np.kron(P0, np.eye(2 ** (target_qubit - control_qubit)))
-            M2 = np.kron(np.kron(P1, np.eye(2 ** (target_qubit - control_qubit) - len(gate_matrix))), gate_matrix)
-            
+            M2 = np.kron(np.kron(P1, np.eye(
+                2 ** (target_qubit - control_qubit) - len(gate_matrix))), gate_matrix)
+
         else:
             M1 = np.kron(np.eye(2 ** (control_qubit - target_qubit)), P0)
-            M2 = np.kron(gate_matrix, np.kron(np.eye(2 ** (control_qubit - target_qubit -1) - len(gate_matrix)), P1)) 
+            M2 = np.kron(gate_matrix, np.kron(
+                np.eye(2 ** (control_qubit - target_qubit - 1) - len(gate_matrix)), P1))
 
         controlled_gate = M1 + M2
-        #print(controlled_gate)
+        # print(controlled_gate)
         if name != -1:
-            gates_map[name] = (controlled_gate, int(np.log2(len(controlled_gate))))
+            gates_map[name] = (controlled_gate, int(
+                np.log2(len(controlled_gate))))
 
         return controlled_gate
+
+
+#######################################################################################
+
+
+    def calculate_density_matrix(self):
+        density_matrix = np.tensordot(self.state, self.state, axes=0)
+        return density_matrix
+
+    def plot_density_matrix(self):
+        density_matrix = np.tensordot(self.state, self.state, axes=0)
+        density_matrix = abs(density_matrix)
+        plt.imshow(density_matrix, cmap='viridis')
+        plt.colorbar()
+        plt.title('Density matrix')
+        plt.show()
