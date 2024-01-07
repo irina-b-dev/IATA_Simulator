@@ -4,6 +4,7 @@ from scipy.linalg import norm
 import matplotlib.pyplot as plt
 import random
 import json
+import qiskit.quantum_info as qi
 
 # The n-qubit system's state is as an array of 2^n coefficients (one for each possible value of the qubits).
 class NQubitSystem:
@@ -368,3 +369,22 @@ class NQubitSystem:
             gates_map[name] = (controlled_gate, int(np.log2(len(controlled_gate))))
 
         return controlled_gate
+
+    def import_to_qiskit(self):
+        pass
+        """
+        circuit = json.load(json_file)
+        initial_state = circuit["initial_state"]
+        quantum_system = NQubitSystem(n_qubits = len(initial_state))
+        quantum_system.initialize_state(initial_state)
+        gates_applied = circuit["gates_applied"]
+        for gate_applied in gates_applied:
+            idx = gate_applied["idx"]
+            gate_name = gate_applied["gate_name"]
+            qubits_affected = gate_applied["qubits_affected"]
+            single_gate = gate_applied["single_gate"]
+            single_gate = np.array([[quantum_system.complex_decoder(d) for d in row] for row in single_gate])
+            system_gate = gate_applied["system_gate"]
+            system_gate = np.array([[quantum_system.complex_decoder(d) for d in row] for row in system_gate])
+            quantum_system.apply_full_gate(idx, gate_name, qubits_affected, single_gate, system_gate)
+        """

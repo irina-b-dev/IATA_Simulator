@@ -149,8 +149,9 @@ def test_basic_gates():
 
 def test_import_export_gate():
     gate = gates_map["TOFFOLI"][0]
-    Gate.export_gate('test', gate)
-    toffoli_gate = Gate.import_gate('test')
+    file_path = 'tests/gate'
+    Gate.export_gate(file_path, gate)
+    toffoli_gate = Gate.import_gate(file_path)
     assert np.allclose(toffoli_gate, gates_map["TOFFOLI"][0])
     print("Test import/export successfull!")
 
@@ -260,12 +261,74 @@ def test_noise():
     else:
         print("Quantum noise applied!")
 
+def test_lab3_circuit():
+    quantum_system = NQubitSystem(n_qubits = 4)
+    quantum_system.initialize_state([0,1,1,0])
+    quantum_system.print_state()
+    quantum_system.print_initial_qubits()
+
+    quantum_system.apply_H_gate(3)
+    quantum_system.print_state()
+    quantum_system.print_all_gates_applied()
+
+    quantum_system.apply_X_gate(1)
+    quantum_system.print_state()
+    quantum_system.print_all_gates_applied()
+
+    quantum_system.apply_S_gate(3)
+    quantum_system.print_state()
+    quantum_system.print_all_gates_applied()
+
+    quantum_system.apply_SWAP_gate(2)
+    quantum_system.print_state()
+    quantum_system.print_all_gates_applied()
+
+    quantum_system.apply_CNOT10_gate(1)
+    quantum_system.print_state()
+    quantum_system.print_all_gates_applied()
+
+    quantum_system.apply_CNOT10_gate(0)
+    quantum_system.print_state()
+    quantum_system.print_all_gates_applied()
+
+    quantum_system.apply_H_gate(0)
+    quantum_system.print_state()
+    quantum_system.print_all_gates_applied()
+
+    quantum_system.apply_CNOT_gate(0)
+    quantum_system.print_state()
+    quantum_system.print_all_gates_applied()
+
+    quantum_system.apply_S_gate(0)
+    quantum_system.print_state()
+    quantum_system.print_all_gates_applied()
+
+    quantum_system.apply_CNOT_gate(1)
+    quantum_system.print_state()
+    quantum_system.print_all_gates_applied()
+
+    # ERROR - TODO
+    """
+    target_qubit = 0
+    control_qubit = 1
+    gate_name = "H"
+    control_gate_name = f"Controlled-{gate_name}_Cq{control_qubit}_Tq{target_qubit}"
+    gate = quantum_system.control_gate(control_qubit = control_qubit, target_qubit = target_qubit, gate_matrix = gates_map[gate_name][0], name=control_gate_name)
+    quantum_system.apply_gate(gate)
+    quantum_system.print_state()
+    """
+
+    quantum_system.apply_H_gate(1)
+    quantum_system.print_state()
+    quantum_system.print_all_gates_applied()
+
 if __name__ == "__main__":
-    #test_init()
-    #test_initialize_state()
-    #test_basic_gates()
-    #test_import_export_gate()
-    #test_custom_gate()
+    test_init()
+    test_initialize_state()
+    test_basic_gates()
+    test_import_export_gate()
+    test_custom_gate()
+    test_lab3_circuit()
     test_import_export_circuit_custom()
     test_import_export_circuit_basic()
     #test_noise()
