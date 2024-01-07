@@ -223,13 +223,16 @@ def test_custom_gate():
 
     return quantum_system
 
-def test_export_circuit():
+def test_import_export_circuit():
     quantum_system = test_custom_gate()
     quantum_system.export_circuit("circuit.json")
+
     quantum_system_imported = NQubitSystem.import_circuit("circuit.json")
+    quantum_system_imported.print_state()
+    assert np.allclose(quantum_system_imported.state, [0.25-0.60355j, 0, 0.60355+0.25j, 0, -0.25-0.10355j, 0, 0.10355-0.25j, 0], atol=1e-6)
+    quantum_system_imported.print_all_gates_applied()
+    print("Import/Export test successful!")
     
-def test_import_circuit():
-    pass
 
 def test_noise():
     quantum_system = NQubitSystem(n_qubits = 3)
@@ -250,6 +253,5 @@ if __name__ == "__main__":
     #test_basic_gates()
     #test_import_export_gate()
     #test_custom_gate()
-    #test_export_circuit()
-    test_import_circuit()
+    test_import_export_circuit()
     #test_noise()

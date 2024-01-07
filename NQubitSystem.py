@@ -39,6 +39,12 @@ class NQubitSystem:
             print(f"Step {idx}: {gate_name} on qubits {qubits_affected}")
         print("")
     
+    def complex_encoder(self, z):
+        return {"real": z.real, "imag": z.imag}
+
+    def complex_decoder(self, d):
+        return complex(d["real"], d["imag"])
+
     def export_circuit(self, file_path):
         if len(self.gates_applied) == 0:
             return
@@ -48,12 +54,16 @@ class NQubitSystem:
         }
         for gate_applied in self.gates_applied:
             idx, gate_name, qubits_affected, single_gate, system_gate = gate_applied
+
+            single_gate = np.array([[self.complex_encoder(z) for z in row] for row in single_gate]).tolist()
+            system_gate = np.array([[self.complex_encoder(z) for z in row] for row in system_gate]).tolist()
+
             circuit["gates_applied"].append({
                 "idx": idx,
                 "gate_name": gate_name,
                 "qubits_affected": qubits_affected,
-                "single_gate": np.array2string(single_gate),
-                "system_gate": np.array2string(system_gate)
+                "single_gate": single_gate,
+                "system_gate": system_gate
             })
         circuit_json = json.dumps(circuit, indent=4)
         with open(file_path, "w") as json_file:
@@ -64,8 +74,22 @@ class NQubitSystem:
     @staticmethod
     def import_circuit(file_path):
         with open(file_path, "r") as json_file:
-            data = json.load(json_file)
-            print(data)
+            circuit = json.load(json_file)
+            initial_state = circuit["initial_state"]
+            quantum_system = NQubitSystem(n_qubits = len(initial_state))
+            quantum_system.initialize_state(initial_state)
+            gates_applied = circuit["gates_applied"]
+            for gate_applied in gates_applied:
+                idx = gate_applied["idx"]
+                gate_name = gate_applied["gate_name"]
+                qubits_affected = gate_applied["qubits_affected"]
+                single_gate = gate_applied["single_gate"]
+                single_gate = np.array([[quantum_system.complex_decoder(d) for d in row] for row in single_gate])
+                system_gate = gate_applied["system_gate"]
+                system_gate = np.array([[quantum_system.complex_decoder(d) for d in row] for row in system_gate])
+                quantum_system.apply_full_gate(idx, gate_name, qubits_affected, single_gate, system_gate)
+
+        return quantum_system
 
     # Initialize the state as |0...0>
     def __init__(self, n_qubits):
@@ -96,6 +120,15 @@ class NQubitSystem:
                 self.apply_X_gate(target, False)
             if random.random() < p:
                 self.apply_Z_gate(target, False)
+
+    def apply_full_gate(self, idx, gate_name, qubits_affected, single_gate, system_gate, noise = False):
+        self.state = np.dot(system_gate, self.state)
+        
+        if noise == True:
+            self.quantum_noise()
+
+        assert self.is_valid_state()
+        self.gates_applied.append((idx, gate_name, qubits_affected, single_gate, system_gate))
 
     # Apply general gate to the state
     def apply_gate(self, gate, n_gate = -1, starting_qubit = 0, noise = False):
