@@ -226,7 +226,7 @@ def test_custom_gate():
 
 def test_import_export_circuit_custom():
     quantum_system = test_custom_gate()
-    json_file = "circuit_custom.json"
+    json_file = "tests/circuit_custom.json"
 
     quantum_system.export_circuit(json_file)
     quantum_system_imported = NQubitSystem.import_circuit(json_file)
@@ -237,7 +237,7 @@ def test_import_export_circuit_custom():
 
 def test_import_export_circuit_basic():
     quantum_system = test_basic_gates()
-    json_file = "circuit_basic.json"
+    json_file = "tests/circuit_basic.json"
 
     quantum_system.export_circuit(json_file)
     quantum_system_imported = NQubitSystem.import_circuit(json_file)
