@@ -1,7 +1,7 @@
 import numpy as np
 
 # Map (gate, n_qubits_affected)
-gates = {
+gates_map = {
     "X": (np.array([[0, 1], [1, 0]]), 1),
     "Y": (np.array([[0, -1j], [1j, 0]]), 1),
     "Z": (np.array([[1, 0], [0, -1]]), 1),

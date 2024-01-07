@@ -1,7 +1,7 @@
 # Gates class
 import numpy as np
 import matplotlib.pyplot as plt
-from constants import gates
+from constants import gates_map
 
 class Gate:
     def __init__(self, dim):
@@ -64,39 +64,56 @@ class Gate:
             return gate
 
     @staticmethod
-    def create_custom_gate(dim = -1, gates_list = -1):
-        if dim == -1:
+    def create_custom_gate(dim=None, gates_list=None, name=None):
+        if dim is None:
             dim = int(input("Enter no qubits affected:"))
-        if gates_list == -1: 
-            gates_list = input("Enter list of gates separated by space:")
-        gates_list = gates_list.split()
-        init_gate = np.eye(2**dim)
-        for i in range(len(gates_list)):
-            print(gates[gates_list[i]])
-            gate = gates[gates_list[i]][0]
+
+        if gates_list is None:
+            gates_input = input("Enter list of gates separated by space:")
+            gates_list = gates_input.split()
+
+        init_gate = np.eye(2 ** dim)
+        for gate_name in gates_list:
+            if gate_name not in gates_map:
+                print(f"Invalid gate name: {gate_name}")
+                return None, None
+            gate = gates_map[gate_name][0]
             init_gate = np.dot(init_gate, gate)
-        return dim, init_gate 
+
+        if name != None:
+            gates_map[name] = (init_gate, int(np.log2(len(init_gate))))
+
+        return dim, init_gate
 
     @staticmethod
-    def create_custom_user_gate():
-        size = int(input("Enter the size of the square matrix: "))
+    def create_custom_user_gate(size=None, matrix_values=None, name=None):
+        if size is None:
+            size = int(input("Enter the size of the square matrix: "))
 
-        # Initialize an empty list to store the matrix
         matrix = []
 
-        # Loop to input each row of the square matrix
-        for i in range(size):
-            row_str = input(f"Enter values for row {i + 1} separated by space: ")
-            row_values = list(map(float, row_str.split()))
-            
-            # Ensure the number of columns matches the size
-            if len(row_values) != size:
-                print("Invalid input. Number of columns must match the size of the square matrix.")
+        if matrix_values is None:
+            # Get user input if matrix_values is not provided
+            for i in range(size):
+                row_str = input(f"Enter values for row {i + 1} separated by space: ")
+                row_values = list(map(float, row_str.split()))
+                
+                if len(row_values) != size:
+                    print("Invalid input. Number of columns must match the size of the square matrix.")
+                    return None
+
+                matrix.append(row_values)
+        else:
+            # Use provided matrix_values
+            if len(matrix_values) != size or any(len(row) != size for row in matrix_values):
+                print("Invalid input. Size of the matrix or rows does not match the specified size.")
                 return None
 
-            matrix.append(row_values)
+            matrix = matrix_values
 
-        # Convert the list of lists to a NumPy array
         matrix_array = np.array(matrix)
+
+        if name != None:
+            gates_map[name] = (matrix_array, int(np.log2(len(matrix_array))))
 
         return matrix_array
