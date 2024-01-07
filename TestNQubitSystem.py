@@ -204,6 +204,14 @@ def test_custom_gate():
     assert np.allclose(quantum_system.state, [0, 0.60355+0.25j, 0, -0.60355-0.25j, 0, 0.10355-0.25j, 0, -0.10355+0.25j], atol=1e-6)
     # https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B1%2C1%2C%22H%22%5D%2C%5B%22Z%5E%C2%BC%22%2C1%2C%22%E2%80%A2%22%5D%2C%5B1%2C%22H%22%5D%2C%5B1%2C1%2C%22H%22%5D%5D%2C%22init%22%3A%5B1%2C1%5D%7D
 
+    print("\nApply Z and S gates on qubit 1!\n")
+    dim, gate = Gate.create_custom_gate(dim = 1, gates_list=["Z", "S"], name = "Z_S")
+    quantum_system.apply_gate(gate, n_gate = dim, starting_qubit = 1)
+    quantum_system.print_state()
+    quantum_system.print_all_gates_applied()
+    assert np.allclose(quantum_system.state, [0, 0.60355+0.25j, 0, -0.25+0.60355j, 0, 0.10355-0.25j, 0, 0.25+0.10355j], atol=1e-6)
+
+
     print("\nCustom gates tests successful!")
 
 def test_noise():
