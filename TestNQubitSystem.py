@@ -130,11 +130,13 @@ def test_basic_gates():
 
     print("Apply control gate | Test custom control-gate | Apply CS gate on control-qubit 0 and target-qubit 2!\n")
     target_qubit = 2
-    control_qubit = 0
+    control_qubit = [0]
+    # starting_qubit = np.min([target_qubit,np.min(control_qubit)])
+    starting_qubit = 0
     gate_name = "S"
     control_gate_name = f"Controlled-{gate_name}_Cq{control_qubit}_Tq{target_qubit}"
-    gate = quantum_system.control_gate(control_qubit = control_qubit, target_qubit = target_qubit, gate_matrix = gates_map[gate_name][0], name=control_gate_name)
-    quantum_system.apply_gate(gate)
+    gate = quantum_system.control_gate(control_qubits = control_qubit, target_qubit = target_qubit, gate_matrix = gates_map[gate_name][0], name=control_gate_name)
+    quantum_system.apply_gate(gate, starting_qubit = starting_qubit)
     quantum_system.print_state()
     assert np.allclose(quantum_system.state, [0, 0.5, -0.35355, +0.35355j, -0.25-0.25j, -0.35355j, -0.5j, 0])
     # https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B%22H%22%2C%22X%22%2C%22H%22%5D%2C%5B%22Z%22%2C%22Y%22%2C%22Z%5E%C2%BD%22%5D%2C%5B%22Z%5E%C2%BC%22%5D%2C%5B%22X%22%2C%22%E2%80%A2%22%5D%2C%5B1%2C%22H%22%2C%22%E2%80%A2%22%5D%2C%5B%22Y%22%2C%22%E2%80%A2%22%5D%2C%5B1%2C%22Z%22%2C%22%E2%80%A2%22%5D%2C%5B%22Z%5E%C2%BC%22%2C%22%E2%80%A2%22%5D%2C%5B1%2C%22Z%5E%C2%BD%22%2C%22%E2%80%A2%22%5D%2C%5B%22Swap%22%2C%22Swap%22%5D%2C%5B1%2C%22%E2%80%A2%22%2C%22X%22%5D%2C%5B%22X%22%2C%22%E2%80%A2%22%2C%22%E2%80%A2%22%5D%2C%5B%22Z%5E%C2%BD%22%2C1%2C%22%E2%80%A2%22%5D%5D%2C%22init%22%3A%5B1%2C1%5D%7D
@@ -170,11 +172,13 @@ def test_custom_gate():
 
     print("\nApply CT gate on control-qubit 0 and target-qubit 2!\n")
     target_qubit = 2
-    control_qubit = 0
+    control_qubit = [0]
     gate_name = "T"
+    starting_qubit = 0
+    # np.min([target_qubit,np.min(control_qubit)])
     control_gate_name = f"Controlled-{gate_name}_Cq{control_qubit}_Tq{target_qubit}"
-    gate = quantum_system.control_gate(control_qubit = control_qubit, target_qubit = target_qubit, gate_matrix = gates_map[gate_name][0], name=control_gate_name)
-    quantum_system.apply_gate(gate)
+    gate = quantum_system.control_gate(control_qubits = control_qubit, target_qubit = target_qubit, gate_matrix = gates_map[gate_name][0], name=control_gate_name)
+    quantum_system.apply_gate(gate, starting_qubit = starting_qubit)
     quantum_system.print_state()
     assert np.allclose(quantum_system.state, [0, 0, 0, 1/np.sqrt(2), 0, 0, 0, 0.5+0.5j])
     # https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B1%2C1%2C%22H%22%5D%2C%5B%22Z%5E%C2%BC%22%2C1%2C%22%E2%80%A2%22%5D%5D%2C%22init%22%3A%5B1%2C1%5D%7D
@@ -307,16 +311,25 @@ def test_lab3_circuit():
     quantum_system.print_state()
     quantum_system.print_all_gates_applied()
 
-    # ERROR - TODO
-    """
+    
     target_qubit = 0
-    control_qubit = 1
+    control_qubit = [1]
     gate_name = "H"
+    starting_qubit = 0
+    # np.min([target_qubit,np.min(control_qubit)])
     control_gate_name = f"Controlled-{gate_name}_Cq{control_qubit}_Tq{target_qubit}"
-    gate = quantum_system.control_gate(control_qubit = control_qubit, target_qubit = target_qubit, gate_matrix = gates_map[gate_name][0], name=control_gate_name)
+    gate = quantum_system.control_gate(control_qubits = control_qubit, target_qubit = target_qubit, gate_matrix = gates_map[gate_name][0], name=control_gate_name)
+    quantum_system.apply_gate(gate,starting_qubit = starting_qubit)
+    quantum_system.print_state()
+
+
+    target_qubit = 0
+    control_qubit = 2
+    swap_gate_name = f"Swap-{gate_name}_Cq{control_qubit}_Tq{target_qubit}"
+    gate = quantum_system.swap_n_gate(control_qubit = control_qubit, target_qubit = target_qubit, name=swap_gate_name)
     quantum_system.apply_gate(gate)
     quantum_system.print_state()
-    """
+    
 
     quantum_system.apply_H_gate(1)
     quantum_system.print_state()
