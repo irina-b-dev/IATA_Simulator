@@ -348,8 +348,10 @@ class NQubitSystem:
             measurement_result = 1
         
         return measurement_result
+    
 
-    def control_gate(self, control_qubit, target_qubit, gate_matrix, name=-1):
+    def apply_control(self, control_qubit, target_qubit, gate_matrix):
+
         P0 = np.array([[1, 0], [0, 0]])
         P1 = np.array([[0, 0], [0, 1]])
 
@@ -357,30 +359,57 @@ class NQubitSystem:
         M2 = np.eye(1)
 
         if(target_qubit>control_qubit):
-            M1 = np.kron(P0, np.eye(2 ** (target_qubit - control_qubit)))
+            M1 = np.kron(P0, np.eye(2 ** (target_qubit - control_qubit - 1 + int(np.log2([len(gate_matrix)])[0]))))
 
-            M1 = np.kron(np.eye(2**(control_qubit)), M1)
-            M1 = np.kron(M1, np.eye(2** (self.n_qubits - target_qubit - 1)))
+            # M1 = np.kron(np.eye(2**(control_qubit)), M1)
+            # M1 = np.kron(M1, np.eye(2** (self.n_qubits - target_qubit - 1)))
 
-            M2 = np.kron(np.kron(P1, np.eye(2 ** (target_qubit - control_qubit - int(np.log2([len(gate_matrix)])[0])))), gate_matrix)
-            
-            M2 = np.kron(np.eye(2**(control_qubit)), M2)
-            M2 = np.kron(M2, np.eye(2** (self.n_qubits - target_qubit - 1)))
+            M2 = np.kron(np.kron(P1, np.eye(2 ** (target_qubit - control_qubit - 1 ))), gate_matrix)
+            # - int(np.log2([len(gate_matrix)])[0])
+            # M2 = np.kron(np.eye(2**(control_qubit)), M2)
+            # M2 = np.kron(M2, np.eye(2** (self.n_qubits - target_qubit - 1)))
             
         else:
-            M1 = np.kron(np.eye(2 ** (control_qubit - target_qubit)), P0)
-            M1 = np.kron(np.eye(2**(target_qubit)), M1)
-            M1 = np.kron(M1, np.eye(2** (self.n_qubits - control_qubit - 1)))
+            M1 = np.kron(np.eye(2 ** (control_qubit - target_qubit - 1 + int(np.log2([len(gate_matrix)])[0]) )), P0)
+            # M1 = np.kron(np.eye(2**(target_qubit)), M1)
+            # M1 = np.kron(M1, np.eye(2** (self.n_qubits - control_qubit - 1)))
 
             M2 = np.kron(gate_matrix, 
-                         np.kron(np.eye(2 ** (control_qubit - target_qubit - int(np.log2([len(gate_matrix)])[0]))), P1))
-            M2 = np.kron(np.eye(2**(target_qubit)), M2)
-            M2 = np.kron(M2, np.eye(2** (self.n_qubits - control_qubit - 1))) 
+                         np.kron(np.eye(2 ** (control_qubit - target_qubit - 1 )), P1))
+            # M2 = np.kron(np.eye(2**(target_qubit)), M2)
+            # M2 = np.kron(M2, np.eye(2** (self.n_qubits - control_qubit - 1))) 
 
         controlled_gate = M1 + M2
-        #print(controlled_gate)
+
+        return controlled_gate
+
+    def control_gate(self, control_qubits, target_qubit, gate_matrix, name=-1):
+
+        control_qubits = np.sort(control_qubits)
+        index_target = np.searchsorted(control_qubits, target_qubit)
+        index_target2 = np.searchsorted(control_qubits, target_qubit + int(np.log2([len(gate_matrix)])[0]) -1)
+        assert index_target == index_target2 , "Qubit overlap (target qubit same as control qubit)"
+
+        qubits_before_target = control_qubits[:index_target]
+        qubits_after_target = control_qubits[index_target:]
+
+        controlled_gate = gate_matrix
+        num_qubits_a = len(qubits_after_target)
+        for i in range(0,num_qubits_a):
+            controlled_gate = self.apply_control(qubits_after_target[i],target_qubit, controlled_gate)
+
+        num_qubits_b = len(qubits_before_target)
+        for i in range(0,num_qubits_b):
+            control_qb = qubits_before_target[num_qubits_b - i - 1]
+            controlled_gate = self.apply_control(control_qb,target_qubit, controlled_gate)
+            target_qubit = control_qb
+
+
+        print(controlled_gate)
         if name != -1:
             gates_map[name] = (controlled_gate, int(np.log2(len(controlled_gate))))
+
+        qubits_affected = np.append(control_qubits, target_qubit)    
 
         return controlled_gate
     
