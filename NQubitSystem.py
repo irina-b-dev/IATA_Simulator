@@ -136,7 +136,8 @@ class NQubitSystem:
         assert 0 <= starting_qubit <= self.n_qubits - n_gate
 
         if n_gate == -1:
-            n_gate = self.n_qubits
+            n_gate = int(np.log2([len(gate)])[0])
+            #self.n_qubits
 
         I = np.eye(2)
         gate_matrix = 1
@@ -357,11 +358,24 @@ class NQubitSystem:
 
         if(target_qubit>control_qubit):
             M1 = np.kron(P0, np.eye(2 ** (target_qubit - control_qubit)))
-            M2 = np.kron(np.kron(P1, np.eye(2 ** (target_qubit - control_qubit) - len(gate_matrix))), gate_matrix)
+
+            M1 = np.kron(np.eye(2**(control_qubit)), M1)
+            M1 = np.kron(M1, np.eye(2** (self.n_qubits - target_qubit - 1)))
+
+            M2 = np.kron(np.kron(P1, np.eye(2 ** (target_qubit - control_qubit - int(np.log2([len(gate_matrix)])[0])))), gate_matrix)
+            
+            M2 = np.kron(np.eye(2**(control_qubit)), M2)
+            M2 = np.kron(M2, np.eye(2** (self.n_qubits - target_qubit - 1)))
             
         else:
             M1 = np.kron(np.eye(2 ** (control_qubit - target_qubit)), P0)
-            M2 = np.kron(gate_matrix, np.kron(np.eye(2 ** (control_qubit - target_qubit -1) - len(gate_matrix)), P1)) 
+            M1 = np.kron(np.eye(2**(target_qubit)), M1)
+            M1 = np.kron(M1, np.eye(2** (self.n_qubits - control_qubit - 1)))
+
+            M2 = np.kron(gate_matrix, 
+                         np.kron(np.eye(2 ** (control_qubit - target_qubit - int(np.log2([len(gate_matrix)])[0]))), P1))
+            M2 = np.kron(np.eye(2**(target_qubit)), M2)
+            M2 = np.kron(M2, np.eye(2** (self.n_qubits - control_qubit - 1))) 
 
         controlled_gate = M1 + M2
         #print(controlled_gate)
@@ -369,6 +383,46 @@ class NQubitSystem:
             gates_map[name] = (controlled_gate, int(np.log2(len(controlled_gate))))
 
         return controlled_gate
+    
+    def swap_n_gate(self, control_qubit, target_qubit, name=-1):
+
+        M1 = np.eye(1)
+        M2 = np.eye(1)
+        
+        if(target_qubit < control_qubit):
+            aux = target_qubit
+            target_qubit = control_qubit
+            control_qubit = aux
+
+        # M1 eye
+        M1 = np.eye(2 ** (self.n_qubits))
+
+        # M2 X gates_map["X"][0]
+        M2_1 = np.kron(np.eye(2 ** control_qubit), gates_map["X"][0])
+        M2_2 = np.kron(np.eye(2** (target_qubit - control_qubit - 1)), gates_map["X"][0])
+        M2_3 = np.kron(M2_1, M2_2)
+        M2 = np.kron(M2_3, np.eye(2**(self.n_qubits - target_qubit - 1)))
+
+        # M3 Y gates_map["Y"][0]
+        M3_1 = np.kron(np.eye(2 ** control_qubit), gates_map["Y"][0])
+        M3_2 = np.kron(np.eye(2** (target_qubit - control_qubit - 1)), gates_map["Y"][0])
+        M3_3 = np.kron(M3_1, M3_2)
+        M3 = np.kron(M3_3, np.eye(2**(self.n_qubits - target_qubit - 1)))
+
+        # M4 Z gates_map["Z"][0] 
+        M4_1 = np.kron(np.eye(2 ** control_qubit), gates_map["Z"][0])
+        M4_2 = np.kron(np.eye(2** (target_qubit - control_qubit - 1)), gates_map["Z"][0])
+        M4_3 = np.kron(M4_1, M4_2)
+        M4 = np.kron(M4_3, np.eye(2**(self.n_qubits - target_qubit - 1)))
+        
+
+        swap_gate = M1 + M2 + M3 + M4
+        swap_gate = swap_gate * 0.5
+        print(swap_gate)
+        if name != -1:
+            gates_map[name] = (swap_gate, int(np.log2(len(swap_gate))))
+
+        return swap_gate
 
     def import_to_qiskit(self):
         pass

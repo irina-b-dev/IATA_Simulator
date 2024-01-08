@@ -307,8 +307,7 @@ def test_lab3_circuit():
     quantum_system.print_state()
     quantum_system.print_all_gates_applied()
 
-    # ERROR - TODO
-    """
+    
     target_qubit = 0
     control_qubit = 1
     gate_name = "H"
@@ -316,7 +315,15 @@ def test_lab3_circuit():
     gate = quantum_system.control_gate(control_qubit = control_qubit, target_qubit = target_qubit, gate_matrix = gates_map[gate_name][0], name=control_gate_name)
     quantum_system.apply_gate(gate)
     quantum_system.print_state()
-    """
+
+
+    target_qubit = 0
+    control_qubit = 2
+    swap_gate_name = f"Swap-{gate_name}_Cq{control_qubit}_Tq{target_qubit}"
+    gate = quantum_system.swap_n_gate(control_qubit = control_qubit, target_qubit = target_qubit, name=swap_gate_name)
+    quantum_system.apply_gate(gate)
+    quantum_system.print_state()
+    
 
     quantum_system.apply_H_gate(1)
     quantum_system.print_state()
