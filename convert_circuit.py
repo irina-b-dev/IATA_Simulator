@@ -2,7 +2,12 @@ from NQubitSystem import NQubitSystem
 from pytket import Circuit, OpType
 from pytket.circuit import Unitary1qBox, Unitary2qBox
 import numpy as np
-IATA_circuit = NQubitSystem.import_circuit("tests/circuit_custom.json")
+import re
+from qiskit import QuantumCircuit
+from pytket.extensions.qiskit import tk_to_qiskit
+from pytket.extensions.cirq import tk_to_cirq
+import cirq
+
 common_gates = ["X", "Y", "Z", "H", "S", "T", "CNOT", "CH",
                 "CY", "CZ", "CT", "CS", "SWAP", "CNOT10", "TOFFOLI"]
 
@@ -53,6 +58,30 @@ def apply_custom_gate(tket_circuit, custom_gate, qubits_affected):
         tket_circuit.add_gate(custom_2q_gate, qubits_affected)
 
 
+def apply_controlled_gate(tket_circuit, gate_string):
+    # Parse the gate_string
+    match = re.match(r"Controlled-(\w+)_Cq(\d+)_Tq(\d+)", gate_string)
+    if not match:
+        raise ValueError("Invalid gate string format.")
+
+    gate, control_qubit, target_qubit = match.groups()
+
+    # Convert qubit indices to integers
+    control_qubit = int(control_qubit)
+    target_qubit = int(target_qubit)
+
+    # Apply the controlled gate to the circuit
+    if gate in common_gates and gate != "T":
+        # Dynamically call the gate method
+        getattr(tket_circuit, f'C{gate}')(control_qubit, target_qubit)
+    elif gate == "T":
+        angle = np.pi / 4
+        tket_circuit.add_gate(OpType.CRz, angle, [
+                              control_qubit, target_qubit])
+    else:
+        raise ValueError(f"Unsupported gate '{gate}'.")
+
+
 def convert_to_tket(IATA_circuit):
     n = IATA_circuit.n_qubits
     tket_circuit = Circuit(n)
@@ -65,12 +94,18 @@ def convert_to_tket(IATA_circuit):
         idx, gate_name, qubits_affected, single_gate, system_gate = gate_applied
         if (gate_name in common_gates):
             apply_gate_tket(tket_circuit, gate_name, qubits_affected)
+        elif gate_name[:10] == "Controlled":
+            apply_controlled_gate(tket_circuit, gate_name)
         else:
-            print(gate_name)
-            print(single_gate)
-
+            apply_custom_gate(tket_circuit, single_gate, qubits_affected)
     return tket_circuit
 
 
-tket_circuit = convert_to_tket(IATA_circuit)
-print(tket_circuit)
+def convert_to_qiskit(IATA_circuit):
+    tket_circuit = convert_to_tket(IATA_circuit)
+    return tk_to_qiskit(tket_circuit)
+
+
+def convert_to_cirq(IATA_circuit):
+    tket_circuit = convert_to_tket(IATA_circuit)
+    return tk_to_cirq(tket_circuit)
