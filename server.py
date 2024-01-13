@@ -6,6 +6,7 @@ from NQubitSystem import NQubitSystem
 import numpy as np
 from constants import gates_map
 from Gate import Gate
+import backend
 
 host = '127.0.0.1'
 port = 5555
@@ -17,8 +18,15 @@ server_socket.listen()
 print(f"Server listening on {host}:{port}")
 
 clients = {}
-N = 5
-initial_qubits = [0,1,2,3,4]
+#N = 5
+#initial_qubits = [0,1,2,3,4]
+N, initial_qubits = backend.initial_interogation()
+noise_input = input("Should noise be applied? [y/n]")
+if noise_input == "y":
+    noise = True
+else:
+    noise = False 
+
 lock = threading.Lock()
 
 
@@ -50,7 +58,7 @@ def parse_gate_command(command_args , client_socket, server=False):
     args = parser.parse_args(command_args[1:])
 
     # Process the parsed command
-    process_gate_command(args.starting_qubit, args.control, args.gate_name, client_socket,server=server)
+    process_gate_command(args.starting_qubit, args.control, args.gate_name, client_socket,server=server, gate_matrix=[], name=-1)
 
 
 def handle_client(client_socket, address):
@@ -95,7 +103,7 @@ def handle_client(client_socket, address):
             print(f"Error processing command from {clients[client_socket]['alias']} -a {address}: {e}")
 
 
-def process_gate_command(starting_qubit, control_qubits, gate_name, client_socket, server=False):
+def process_gate_command(starting_qubit, control_qubits, gate_name, client_socket, server=False, gate_matrix=[], name=-1):
     if not server:
         print(f"Processing command from {clients[client_socket]['alias']}:")
     print("Starting qubit:", starting_qubit)
@@ -120,6 +128,7 @@ def process_gate_command(starting_qubit, control_qubits, gate_name, client_socke
 
     if check_qubit_ownership:
         # TODO apply_gate
+        backend.apply_operations(target_list=target_list, starting_qubit=starting_qubit, control_qubits=control_qubits, gate_name=gate_name, gate_matrix=gate_matrix, noise=noise, name=name)
         print("applying gate to system")
         send_message_to_client(client_socket, "gate applied!")
     elif server:
