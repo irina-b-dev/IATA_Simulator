@@ -116,7 +116,7 @@ class NQubitSystem:
         # Creates a string from the array, e.g. [0,1,1] -> "011" then converts from binary to int to get the position
         self.index = int(''.join(map(str, qubit_values)), 2)
         self.state = np.zeros(2 ** self.n_qubits, dtype=complex)
-        self.state[index] = 1.0
+        self.state[self.index] = 1.0
         assert self.is_valid_state()
         self.initial_state = qubit_values
 
