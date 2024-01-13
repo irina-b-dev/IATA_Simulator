@@ -85,10 +85,10 @@ def apply_controlled_gate(tket_circuit, gate_string):
 def convert_to_tket(IATA_circuit):
     n = IATA_circuit.n_qubits
     tket_circuit = Circuit(n)
-    dummy_index = IATA_circuit.index
+    dummy_index = int(IATA_circuit.index)
     for i in range(0, n, 1):
         if dummy_index % 2 == 1:
-            tket_circuit.X(i)
+            tket_circuit.X(n-i-1)
         dummy_index = dummy_index/2
     for gate_applied in IATA_circuit.gates_applied:
         idx, gate_name, qubits_affected, single_gate, system_gate = gate_applied
