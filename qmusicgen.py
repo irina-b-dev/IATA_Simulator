@@ -3,48 +3,30 @@ import numpy as np
 from constants import gates_map
 from Gate import Gate
 import qrandomnrgen
-import math        #import needed modules
 import pyaudio     #sudo apt-get install python-pyaudio
 from scipy.io import wavfile
+from music21 import stream, note
 
-
-PyAudio = pyaudio.PyAudio
-sampling_rate = 44100     #number of frames per second/frameset.
-freq = {'00': 500 , '01': 1000, '10': 2000, '11': 10000}   #Hz, waves per second, 261.63=C4-note.
-length = {'00': 2 , '01': 3, '10': 4, '11': 5}    #seconds to play sound
-overtones = 20
-
+notes = {'000': 'C', '001': 'D', '010': 'E', '011': 'F', '100': 'G', '101': 'A', '110': 'B', '111': 'C'}
+quarterLength = {'000': 4.0 , '001': 2.0, '010': 1.0, '011': 0.5, '100': 0.25, '101': 3.0, '110': 2.5, '111': 0.75}
+pitches = {'00': '', '01': '#', '10':'b', '11':''}
 nrsounds = int(input("Enter number of sounds for composition:"))
 
-# final_signal = np.ones(1, dtype=int)
-# print(final_signal)
-""" for i in range(nrsounds):
-    amplitude = qrandomnrgen.samplerandominrange(5)
-    f = freq[qrandomnrgen.sample2quantumgenerator()]
-    l = length[qrandomnrgen.sample2quantumgenerator()]
-    t = np.arange(0, l, 1/sampling_rate)
-    signal = amplitude * np.sin(np.pi * 2 * f * t)
-    signal *= 32767
-    signal = np.int16(signal)
-    
-    wavfile.write("file.wav", sampling_rate, signal) """
-#final_signal = np.append(final_signal, signal)
-#print(type(signal))
-frequency = 1000
-time = np.arange(0, 1, 1/sampling_rate)
+# wavfile.write("file1.wav", sampling_rate, Y)
+def create_note():
+    pitch = qrandomnrgen.samplerandominrange(127)
+    octave = int(pitch / 12)
+    octave = str(octave)
+    note1 = notes[qrandomnrgen.samplenrquantumgenerator(3)]
+    pitch = pitches[qrandomnrgen.sample2quantumgenerator()]
+    result = note1 + pitch + octave
+    ql = quarterLength[qrandomnrgen.samplenrquantumgenerator(3)]
+    return result, ql
+
+s = stream.Stream()
 for i in range(nrsounds):
-    Y = np.sin(2 * np.pi * frequency * time) * np.exp(-0.0004 * 2 * np.pi * frequency * time) 
-    for j in range(overtones):
-        Y += np.sin((j+1) * 2 * np.pi * frequency * time) * np.exp(-0.0004 * 2 * np.pi * frequency * time) / 2**(j+1)
-    #Y += Y * Y * Y
-    #Y *= 1 + 16 * time * np.exp(-6 * time)
-    Y *= 32767
-    Y = np.int16(Y)
+    result, ql = create_note()
+    n = note.Note(result, quarterLength=ql) 
+    s.append(n)
 
-wavfile.write("file1.wav", sampling_rate, Y)
-    
-#print(final_signal)
-#wavfile.write("file.wav", sampling_rate, final_signal)
-
-#final_signal = np.int16(np.array(final_signal))
-#wavfile.write("file.wav", sampling_rate, final_signal)
+s.show("midi")

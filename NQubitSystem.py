@@ -292,8 +292,7 @@ class NQubitSystem:
             # print(projected)
             norm_projected = norm(projected.flatten())
             # measurements = np.zeros(self.n_qubits, dtype=int)
-            print("No qubit {}. Probability to be 0: {}".format(
-                i, norm_projected**2))
+            #print("No qubit {}. Probability to be 0: {}".format(i, norm_projected**2))
             self.probabilities[i] = norm_projected**2
             if np.random.random() < norm_projected**2:  # Sample according to probability distribution
                 # print(projected/norm_projected)
