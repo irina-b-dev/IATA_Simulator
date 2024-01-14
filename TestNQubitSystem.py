@@ -7,10 +7,13 @@ from pytket import Circuit
 from convert_circuit import convert_to_qiskit
 from convert_circuit import convert_to_tket
 from convert_circuit import convert_to_cirq
-from qiskit import QuantumCircuit
-from qiskit.visualization import circuit_drawer
+from qiskit import QuantumCircuit, execute, IBMQ, Aer
+from qiskit.visualization import circuit_drawer, plot_histogram
 from pytket.circuit.display import render_circuit_jupyter
+from qiskit.providers.ibmq import least_busy
+from qiskit.tools.monitor import job_monitor
 import matplotlib.pyplot as plt
+import os
 
 from pytket.extensions.qiskit import (
     AerStateBackend,
@@ -23,6 +26,10 @@ from pytket.extensions.projectq import ProjectQBackend
 
 import cirq
 
+api_key = os.getenv('API_KEY')
+if api_key is None:
+    raise ValueError("API key not found. Please set the API_KEY environment variable.")
+    
 def test_init():
     print("Init test 1! Initializing a 3-qubit system as [0,0,0]\n")
     quantum_system = NQubitSystem(n_qubits = 3)
@@ -436,8 +443,76 @@ def test_convert_cirq():
     cirq.plot_state_histogram(samples, plt.subplot())
     plt.show()
 
-    
+def run_quantum_circuit(qc, execution_type):
+    # Choose execution backend
+    if execution_type == 0:
+        print("Running on local simulator...")
+        #for backend in Aer.backends():
+        #    print(backend)
+        backend = Aer.get_backend('qasm_simulator')
 
+    elif execution_type in [1, 2]:
+        # Load your IBM Quantum account
+        IBMQ.save_account(api_key, overwrite=True)
+        IBMQ.load_account()
+
+        # List all providers and backends with additional details
+        print("Available providers and their backends:")
+        for provider in IBMQ.providers():
+            print("Provider:", provider)
+            for backend in provider.backends():
+                backend_config = backend.configuration()
+                backend_status = backend.status()
+                print(" - Backend:", backend.name())
+                print("   - Number of Qubits:", backend_config.n_qubits)
+                print("   - Simulator:", backend_config.simulator)
+                print("   - Operational:", backend_status.operational)
+
+        provider = IBMQ.get_provider(hub='ibm-q')
+
+        if execution_type == 1:
+            print("Running on cloud simulator...")
+            backend = provider.get_backend('ibmq_qasm_simulator')
+        elif execution_type == 2:
+            print("Running on real quantum hardware...")
+            backend = least_busy(provider.backends(filters=lambda x: x.configuration().n_qubits >= n_qubits and not x.configuration().simulator and x.status().operational==True))
+
+    else:
+        print("Invalid execution type. Please choose 0, 1, or 2.")
+        return
+
+    print("Selected Backend:", backend)
+
+    # Execute the Quantum Circuit
+    job = execute(qc, backend=backend, shots=1024)
+    print("Job ID:", job.job_id())
+
+    # Monitor Job and Retrieve Results (only for real hardware)
+    if execution_type == 2:
+        job_monitor(job)
+
+    result = job.result()
+
+    # Step 7: Plot the Results
+    counts = result.get_counts(qc)
+    plot_histogram(counts)
+    plt.show()
+
+def test_run_qiskit_circuit():
+    n_qubits = 2
+    n_bits = n_qubits
+
+    # Initialize a Quantum Circuit
+    qc = QuantumCircuit(n_qubits, n_bits)
+
+    # Create Entanglement
+    qc.h(0)
+    qc.cx(0, 1)
+
+    # Specify which qubits to measure
+    qc.measure([0,1], [0,1])
+
+    run_quantum_circuit(qc = qc, execution_type=1)
 
 if __name__ == "__main__":
     # test_init()
@@ -451,5 +526,6 @@ if __name__ == "__main__":
     #test_noise()
     # test_density_matrix()
     # test_convert_tket()
-    test_convert_qiskit()
+    #test_convert_qiskit()
     # test_convert_cirq()
+    test_run_qiskit_circuit()
