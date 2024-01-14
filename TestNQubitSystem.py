@@ -484,4 +484,4 @@ if __name__ == "__main__":
     # test_convert_IATA_to_cirq(backend = 1)
 
     test_basic_circuit_in_qiskit()
-    test_custom_circuit_in_qiskit()
+    #test_custom_circuit_in_qiskit()

@@ -19,7 +19,7 @@ class NQubitSystem:
         return np.isclose(np.sum(np.abs(self.state)**2), 1, atol=tolerance)
 
     def print_state(self):
-        print(f"======= {self.n_qubits}-qubit system's state =======")
+        print(f"======= {self.n_qubits}-qubit system's state (IATA Circuit) =======")
         for i, prob in enumerate(self.state):
             binary_string = format(i, f"0{self.n_qubits}b")
             print(f"{binary_string}: {prob:.6f}")
