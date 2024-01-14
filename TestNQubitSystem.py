@@ -2,6 +2,26 @@ from NQubitSystem import NQubitSystem
 import numpy as np
 from constants import gates_map
 from Gate import Gate
+from pytket import Circuit
+# from pytket.backends import Simulator
+from convert_circuit import convert_to_qiskit
+from convert_circuit import convert_to_tket
+from convert_circuit import convert_to_cirq
+from qiskit import QuantumCircuit
+from qiskit.visualization import circuit_drawer
+from pytket.circuit.display import render_circuit_jupyter
+import matplotlib.pyplot as plt
+
+from pytket.extensions.qiskit import (
+    AerStateBackend,
+    AerBackend,
+    AerUnitaryBackend,
+    IBMQBackend,
+    IBMQEmulatorBackend,
+)
+from pytket.extensions.projectq import ProjectQBackend
+
+import cirq
 
 def test_init():
     print("Init test 1! Initializing a 3-qubit system as [0,0,0]\n")
@@ -335,13 +355,101 @@ def test_lab3_circuit():
     quantum_system.print_state()
     quantum_system.print_all_gates_applied()
 
+
+def test_density_matrix():
+
+    quantum_system = NQubitSystem(n_qubits=3)
+    quantum_system.initialize_state([0, 1, 1])
+    quantum_system.apply_H_gate(0)
+    quantum_system.print_state()
+    quantum_system.plot_density_matrix()
+    print(quantum_system.calculate_density_matrix())
+
+def test_convert_tket():
+    json_file = "tests/circuit_basic.json"
+    IATA_circuit = NQubitSystem.import_circuit(json_file)
+    IATA_circuit.print_state()
+    tket_circuit = convert_to_tket(IATA_circuit)
+    tket_circuit.H(0)
+    tket_circuit.CX(0, 1)
+    tket_circuit.CX(1, 2)
+    tket_circuit.add_barrier(tket_circuit.qubits)
+    print(tket_circuit.measure_all())
+
+    # aer_state_b = AerStateBackend()
+    # state_handle = aer_state_b.process_circuit(tket_circuit)
+    # statevector = aer_state_b.get_result(state_handle).get_state()
+    # print(statevector)
+    # render_circuit_jupyter(tket_circuit)
+    # tket_circuit.measure_all()  # Measure all qubits in the circuit
+
+    # # Choose the local simulator backend
+    # backend = Simulator()
+
+    # # Execute the circuit and get measurement results
+    # result = backend.run_circuit(tket_circuit, n_shots=1000)
+
+    # # Display the measurement results
+    # print(result)
+
+
+def test_convert_qiskit():
+    json_file = "tests/circuit_basic.json"
+    IATA_circuit = NQubitSystem.import_circuit(json_file)
+    IATA_circuit.print_state()
+    tket_circuit = convert_to_tket(IATA_circuit)
+    print(tket_circuit)
+    qiskit_circuit = convert_to_qiskit(IATA_circuit)
+    print(qiskit_circuit)
+    
+    qiskit_circuit.measure_all()
+
+def test_convert_cirq():
+    quantum_system = NQubitSystem(n_qubits = 3)
+    print("Apply gate | Initialize a 3-qubit system as [0,1,1]\n")
+    quantum_system.initialize_state([0,1,1])
+    quantum_system.print_state()
+
+    print("Apply gate | Test H-Gate | Apply H gate on all qubits!\n")
+    quantum_system.apply_H_gate(0)
+    quantum_system.apply_H_gate(1)
+    quantum_system.apply_H_gate(2)
+    quantum_system.print_state()
+    #https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B1%2C1%2C%22H%22%5D%5D%2C%22init%22%3A%5B1%2C1%5D%7D
+    # assert np.allclose(quantum_system.state, [0, 0, 0, 1/np.sqrt(2), 0, 0, 0, 1/np.sqrt(2)])
+
+    quantum_system.print_state()
+    tket_circuit = convert_to_tket(quantum_system)
+    print(tket_circuit)
+    cirq_circuit = convert_to_cirq(quantum_system)
+    print(cirq_circuit)
+    q0, q1 = cirq.LineQubit.range(2)
+    cirq_circuit.append(cirq.CNOT(q0, q1))
+    print(cirq_circuit)
+    # q0, q1 = cirq.LineQubit.range(2)
+    s = cirq.Simulator()
+    print('Simulate the circuit:')
+    results = s.simulate(cirq_circuit)
+    print(results)
+    cirq_circuit.append(cirq.measure( cirq.LineQubit.range(3), key='result'))
+    samples = s.run(cirq_circuit, repetitions=1000)
+    cirq.plot_state_histogram(samples, plt.subplot())
+    plt.show()
+
+    
+
+
 if __name__ == "__main__":
-    test_init()
-    test_initialize_state()
-    test_basic_gates()
-    test_import_export_gate()
-    test_custom_gate()
-    test_lab3_circuit()
-    test_import_export_circuit_custom()
-    test_import_export_circuit_basic()
+    # test_init()
+    # test_initialize_state()
+    # test_basic_gates()
+    # test_import_export_gate()
+    # test_custom_gate()
+    # test_lab3_circuit()
+    # test_import_export_circuit_custom()
+    # test_import_export_circuit_basic()
     #test_noise()
+    # test_density_matrix()
+    # test_convert_tket()
+    test_convert_qiskit()
+    # test_convert_cirq()

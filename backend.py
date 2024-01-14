@@ -60,3 +60,12 @@ def apply_operations(target_list, starting_qubit, control_qubits, gate_name, gat
             target_list.apply_gate(gate_init)
     target_list.print_state()
 
+
+def initialize_teleportation():
+    pass
+
+def apply_correction():
+    pass
+
+def entangle():
+    pass

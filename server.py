@@ -7,6 +7,11 @@ import numpy as np
 from constants import gates_map
 from Gate import Gate
 import backend
+import sys
+import signal
+import time
+
+import os
 
 host = '127.0.0.1'
 port = 5555
@@ -20,7 +25,10 @@ print(f"Server listening on {host}:{port}")
 clients = {}
 #N = 5
 #initial_qubits = [0,1,2,3,4]
-N, initial_qubits = backend.initial_interogation()
+num_intial, system = backend.initial_interogation()
+initial_qubits = []
+for i in range(0, num_intial):
+    initial_qubits.append(i)
 noise_input = input("Should noise be applied? [y/n]")
 if noise_input == "y":
     noise = True
@@ -28,6 +36,54 @@ else:
     noise = False 
 
 lock = threading.Lock()
+shutdown_flag = threading.Event()
+
+
+def show_circuit():
+    pass
+
+
+def send_qubits_to(sender_alias, receiver_alias, qubit_array):
+    sender_socket = get_socket_id_from_alias(sender_alias)
+    with lock:
+        socket_receiver = get_socket_id_from_alias(receiver_alias)
+        if not socket_receiver:
+            send_message_to_client(sender_socket, "receiver not found!")
+            return
+        
+        target_list = clients[sender_socket]["qubits"]
+        
+        # initializing test list 
+        test_list = qubit_array
+
+        print(target_list)
+        print(test_list)
+        
+        check_qubit_ownership = all(ele in target_list for ele in test_list)
+
+        if check_qubit_ownership:
+            clients[socket_receiver]["qubits"] = np.append(clients[socket_receiver]["qubits"], qubit_array)
+            for i in qubit_array:
+                if i in clients[sender_socket]["qubits"]:
+                    clients[sender_socket]["qubits"].remove(i)
+
+            send_message_to_client(socket_receiver, 
+                                "You received {qubit_array} from {sender_alias}") 
+
+        else:
+           send_message_to_client(sender_socket, 
+                               "You do not have access to those qubits, talk to your local Eve about this \n If you are unsure about which qubits you own, use command \"mine\" ") 
+
+        
+
+
+
+def get_socket_id_from_alias(alias):
+    with lock:
+        for socket_id, client_info in clients.items():
+            if client_info["alias"] == alias:
+                return socket_id
+    return None
 
 
 def distribute_qubits_to_clients(num_qubits):
@@ -37,8 +93,7 @@ def distribute_qubits_to_clients(num_qubits):
         remaining_qubits = num_qubits % num_clients
 
         for client_socket in clients:
-            clients[client_socket]["qubits"].extend(initial_qubits[:qubits_per_client])
-            # clients[client_socket]["qubits"] = 
+            clients[client_socket]["qubits"] = initial_qubits[:qubits_per_client]
             initial_qubits[:qubits_per_client] = []
 
         # Distribute remaining qubits to the first 'remaining_qubits' clients
@@ -69,9 +124,9 @@ def handle_client(client_socket, address):
         alias = f"Alice-{len(clients)}"
         clients[client_socket] = {"qubits": [], "alias": alias}
 
-        welcome_message = f"Hello {alias}! You are now connected."
+        welcome_message = f"Hello {alias}! You are now connected. \n supported commands are: \ngate, mine, send --to, measure, send_measurement --to, exit "
         client_socket.send(welcome_message.encode('utf-8'))
-    while True:
+    while not shutdown_flag.is_set():
         try:
             command = client_socket.recv(1024).decode('utf-8')
 
@@ -128,9 +183,10 @@ def process_gate_command(starting_qubit, control_qubits, gate_name, client_socke
 
     if check_qubit_ownership:
         # TODO apply_gate
-        backend.apply_operations(target_list=target_list, starting_qubit=starting_qubit, control_qubits=control_qubits, gate_name=gate_name, gate_matrix=gate_matrix, noise=noise, name=name)
+        backend.apply_operations(target_list=system, starting_qubit=starting_qubit, control_qubits=control_qubits, gate_name=gate_name, gate_matrix=gate_matrix, noise=noise, name=name)
+        if not server:
+          send_message_to_client(client_socket, "applied gate")
         print("applying gate to system")
-        send_message_to_client(client_socket, "gate applied!")
     elif server:
         print("Qubits already distributed")
     else:
@@ -157,34 +213,54 @@ def read_server_messages():
 def process_server_message(message):
 
     command_args = message.split()
-
-    if command_args[0].lower() == 'gate':
-        print("passed here")
-        parse_gate_command(command_args)
-    elif command_args[0].lower() == "distribute_qubits":
-        try:
+    if len(command_args) > 0:
+        if command_args[0].lower() == 'gate':
+            print("passed here")
+            parse_gate_command(command_args, 0, server=True)
+        elif command_args[0].lower() == 'mine':
+            print(initial_qubits)
+            
+        elif command_args[0].lower() == "distribute_qubits":
             num_qubits = 0
-            if len(command_args) < 2:
-                num_qubits = len(initial_qubits)
-            else:
+            print(len(command_args))
+            if len(command_args) > 1:
                 num_qubits = int(command_args[1])
-            distribute_qubits_to_clients(num_qubits)
-        except ValueError:
-            print("Invalid number of qubits specified in distribute_qubits command.")    
-    else:
-                print(f"Unknown command")
+            else:
+                print(len(initial_qubits))
+                num_qubits = len(initial_qubits)
+                
+            distribute_qubits_to_clients(num_qubits)  
+        else:
+                    print(f"Unknown command,\n supported commands are: \ndistribute_qubits, gate, mine, send --to, measure, send_measurement --to, exit ")
 
 
     # Example: Process internal server messages here
+
+def server_shutdown(signum, frame):
+    print("\nCtrl+C received. Closing all connections...")
+
+    for client in clients:
+            data = "exit"
+            client.send(data.encode('utf-8'))
+
+    time.sleep(1)
+    os._exit(0)
+
+
+# Set the signal handler for Ctrl+C
+signal.signal(signal.SIGINT, server_shutdown)
 
 
 message_thread = threading.Thread(target=read_server_messages)
 message_thread.start()
 
-while True:
+while not shutdown_flag.is_set():
+
     client_socket, client_address = server_socket.accept()
     with lock:
         clients[client_socket] = {"qubits": [], "alias": f"Alice-{len(clients)}"}
 
     client_handler = threading.Thread(target=handle_client, args=(client_socket, client_address))
     client_handler.start()
+
+    
