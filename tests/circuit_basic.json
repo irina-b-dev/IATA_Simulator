@@ -5533,7 +5533,7 @@
         },
         {
             "idx": 17,
-            "gate_name": "Controlled-S_Cq0_Tq2",
+            "gate_name": "Controlled-S_Cq[0]_Tq2",
             "qubits_affected": [
                 0,
                 1,

@@ -4,31 +4,13 @@ from constants import gates_map
 from Gate import Gate
 from pytket import Circuit
 # from pytket.backends import Simulator
-from convert_circuit import convert_to_qiskit
-from convert_circuit import convert_to_tket
-from convert_circuit import convert_to_cirq
-from qiskit import QuantumCircuit, execute, IBMQ, Aer
-from qiskit.visualization import circuit_drawer, plot_histogram
+from convert_circuit import convert_IATA_to_qiskit, convert_IATA_to_tket, convert_IATA_to_cirq, run_qiskit_circuit, run_cirq_circuit_on_qiskit
+from qiskit import QuantumCircuit
 from pytket.circuit.display import render_circuit_jupyter
-from qiskit.providers.ibmq import least_busy
-from qiskit.tools.monitor import job_monitor
 import matplotlib.pyplot as plt
-import os
-
-from pytket.extensions.qiskit import (
-    AerStateBackend,
-    AerBackend,
-    AerUnitaryBackend,
-    IBMQBackend,
-    IBMQEmulatorBackend,
-)
-from pytket.extensions.projectq import ProjectQBackend
-
 import cirq
-
-api_key = os.getenv('API_KEY')
-if api_key is None:
-    raise ValueError("API key not found. Please set the API_KEY environment variable.")
+from pytket.extensions.qiskit import tk_to_qiskit
+from collections import Counter
     
 def test_init():
     print("Init test 1! Initializing a 3-qubit system as [0,0,0]\n")
@@ -372,131 +354,85 @@ def test_density_matrix():
     quantum_system.plot_density_matrix()
     print(quantum_system.calculate_density_matrix())
 
-def test_convert_tket():
-    json_file = "tests/circuit_basic.json"
-    IATA_circuit = NQubitSystem.import_circuit(json_file)
+def test_convert_IATA_to_tket():
+    # Create a 00 + 11 pair in IATA + TKET
+    IATA_circuit = NQubitSystem(n_qubits = 2)
+    IATA_circuit.initialize_state([0,0])
     IATA_circuit.print_state()
-    tket_circuit = convert_to_tket(IATA_circuit)
-    tket_circuit.H(0)
+
+    print("Apply H gate on qubit 0!\n")
+    IATA_circuit.apply_H_gate(0)
+    IATA_circuit.print_state()
+
+    # Convert IATA to TKET
+    tket_circuit = convert_IATA_to_tket(IATA_circuit)
+
+    print("Apply CNOT gate on qubit control 0 and target 1!\n")
     tket_circuit.CX(0, 1)
-    tket_circuit.CX(1, 2)
-    tket_circuit.add_barrier(tket_circuit.qubits)
-    print(tket_circuit.measure_all())
 
-    # aer_state_b = AerStateBackend()
-    # state_handle = aer_state_b.process_circuit(tket_circuit)
-    # statevector = aer_state_b.get_result(state_handle).get_state()
-    # print(statevector)
-    # render_circuit_jupyter(tket_circuit)
-    # tket_circuit.measure_all()  # Measure all qubits in the circuit
-
-    # # Choose the local simulator backend
-    # backend = Simulator()
-
-    # # Execute the circuit and get measurement results
-    # result = backend.run_circuit(tket_circuit, n_shots=1000)
-
-    # # Display the measurement results
-    # print(result)
-
-
-def test_convert_qiskit():
-    json_file = "tests/circuit_basic.json"
-    IATA_circuit = NQubitSystem.import_circuit(json_file)
-    IATA_circuit.print_state()
-    tket_circuit = convert_to_tket(IATA_circuit)
-    print(tket_circuit)
-    qiskit_circuit = convert_to_qiskit(IATA_circuit)
-    print(qiskit_circuit)
-    
+    # Run TKET by using qiskit backend
+    # Convert TKET to Qiskit
+    qiskit_circuit = tk_to_qiskit(tket_circuit)
     qiskit_circuit.measure_all()
+    run_qiskit_circuit(qc = qiskit_circuit, execution_type = 0)
 
-def test_convert_cirq():
-    quantum_system = NQubitSystem(n_qubits = 3)
-    print("Apply gate | Initialize a 3-qubit system as [0,1,1]\n")
-    quantum_system.initialize_state([0,1,1])
-    quantum_system.print_state()
+def test_convert_IATA_to_qiskit():
+    # Create a 00 + 11 pair in IATA + Qiskit
+    IATA_circuit = NQubitSystem(n_qubits = 2)
+    IATA_circuit.initialize_state([0,0])
+    IATA_circuit.print_state()
 
-    print("Apply gate | Test H-Gate | Apply H gate on all qubits!\n")
-    quantum_system.apply_H_gate(0)
-    quantum_system.apply_H_gate(1)
-    quantum_system.apply_H_gate(2)
-    quantum_system.print_state()
-    #https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B1%2C1%2C%22H%22%5D%5D%2C%22init%22%3A%5B1%2C1%5D%7D
-    # assert np.allclose(quantum_system.state, [0, 0, 0, 1/np.sqrt(2), 0, 0, 0, 1/np.sqrt(2)])
+    print("Apply H gate on qubit 0!\n")
+    IATA_circuit.apply_H_gate(0)
+    IATA_circuit.print_state()
 
-    quantum_system.print_state()
-    tket_circuit = convert_to_tket(quantum_system)
-    print(tket_circuit)
-    cirq_circuit = convert_to_cirq(quantum_system)
+    qiskit_circuit = convert_IATA_to_qiskit(IATA_circuit)
+
+    print("Apply CNOT gate on qubit control 0 and target 1!\n")
+    qiskit_circuit.cx(0, 1)
+    print(qiskit_circuit)
+    qiskit_circuit.measure_all()
+    run_qiskit_circuit(qc = qiskit_circuit, execution_type = 0)
+
+def test_convert_IATA_to_cirq(backend):
+    # Create a 00 + 11 pair in IATA + Qiskit
+    IATA_circuit = NQubitSystem(n_qubits = 2)
+    IATA_circuit.initialize_state([0,0])
+    IATA_circuit.print_state()
+
+    print("Apply H gate on qubit 0!\n")
+    IATA_circuit.apply_H_gate(0)
+    IATA_circuit.print_state()
+
+    cirq_circuit = convert_IATA_to_cirq(IATA_circuit)
     print(cirq_circuit)
     q0, q1 = cirq.LineQubit.range(2)
     cirq_circuit.append(cirq.CNOT(q0, q1))
+    print("Apply CNOT gate on qubit control 0 and target 1!\n")
+    cirq_circuit.append(cirq.measure(q0, q1, key='result'))
     print(cirq_circuit)
-    # q0, q1 = cirq.LineQubit.range(2)
-    s = cirq.Simulator()
-    print('Simulate the circuit:')
-    results = s.simulate(cirq_circuit)
-    print(results)
-    cirq_circuit.append(cirq.measure( cirq.LineQubit.range(3), key='result'))
-    samples = s.run(cirq_circuit, repetitions=1000)
-    cirq.plot_state_histogram(samples, plt.subplot())
-    plt.show()
 
-def run_quantum_circuit(qc, execution_type):
-    # Choose execution backend
-    if execution_type == 0:
-        print("Running on local simulator...")
-        #for backend in Aer.backends():
-        #    print(backend)
-        backend = Aer.get_backend('qasm_simulator')
+    # Run circuit using local Cirq local simulator
+    if backend == 0:
+        simulator = cirq.Simulator()
+        result = simulator.run(cirq_circuit, repetitions=1024)
+        counts = result.histogram(key='result')
+        total_counts = dict(Counter({f'{i:02b}': count for i, count in counts.items()}))
 
-    elif execution_type in [1, 2]:
-        # Load your IBM Quantum account
-        IBMQ.save_account(api_key, overwrite=True)
-        IBMQ.load_account()
+        # Print the results
+        print("\nResults:")
+        print(total_counts)
 
-        # List all providers and backends with additional details
-        print("Available providers and their backends:")
-        for provider in IBMQ.providers():
-            print("Provider:", provider)
-            for backend in provider.backends():
-                backend_config = backend.configuration()
-                backend_status = backend.status()
-                print(" - Backend:", backend.name())
-                print("   - Number of Qubits:", backend_config.n_qubits)
-                print("   - Simulator:", backend_config.simulator)
-                print("   - Operational:", backend_status.operational)
+        # Plotting the results
+        plt.bar(total_counts.keys(), total_counts.values())
+        plt.xlabel('State')
+        plt.ylabel('Counts')
+        plt.title('Measurement Results')
+        plt.show()
 
-        provider = IBMQ.get_provider(hub='ibm-q')
-
-        if execution_type == 1:
-            print("Running on cloud simulator...")
-            backend = provider.get_backend('ibmq_qasm_simulator')
-        elif execution_type == 2:
-            print("Running on real quantum hardware...")
-            backend = least_busy(provider.backends(filters=lambda x: x.configuration().n_qubits >= n_qubits and not x.configuration().simulator and x.status().operational==True))
-
-    else:
-        print("Invalid execution type. Please choose 0, 1, or 2.")
-        return
-
-    print("Selected Backend:", backend)
-
-    # Execute the Quantum Circuit
-    job = execute(qc, backend=backend, shots=1024)
-    print("Job ID:", job.job_id())
-
-    # Monitor Job and Retrieve Results (only for real hardware)
-    if execution_type == 2:
-        job_monitor(job)
-
-    result = job.result()
-
-    # Step 7: Plot the Results
-    counts = result.get_counts(qc)
-    plot_histogram(counts)
-    plt.show()
+    # Run circuit using Qiskit simulators
+    elif backend == 1:
+        run_cirq_circuit_on_qiskit(circuit = cirq_circuit, qubits = (q0,q1), execution_type = 2)
 
 def test_run_qiskit_circuit():
     n_qubits = 2
@@ -512,7 +448,7 @@ def test_run_qiskit_circuit():
     # Specify which qubits to measure
     qc.measure([0,1], [0,1])
 
-    run_quantum_circuit(qc = qc, execution_type=1)
+    run_qiskit_circuit(qc = qc, execution_type = 0)
 
 if __name__ == "__main__":
     # test_init()
@@ -523,9 +459,10 @@ if __name__ == "__main__":
     # test_lab3_circuit()
     # test_import_export_circuit_custom()
     # test_import_export_circuit_basic()
-    #test_noise()
+    # test_noise()
     # test_density_matrix()
-    # test_convert_tket()
-    #test_convert_qiskit()
-    # test_convert_cirq()
-    test_run_qiskit_circuit()
+
+    # test_run_qiskit_circuit()
+    # test_convert_IATA_to_tket()
+    # test_convert_IATA_to_qiskit()
+    test_convert_IATA_to_cirq(backend = 1)

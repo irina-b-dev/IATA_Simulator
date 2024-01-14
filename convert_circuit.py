@@ -3,10 +3,16 @@ from pytket import Circuit, OpType
 from pytket.circuit import Unitary1qBox, Unitary2qBox
 import numpy as np
 import re
-from qiskit import QuantumCircuit
+from qiskit import QuantumCircuit, execute, IBMQ, Aer
 from pytket.extensions.qiskit import tk_to_qiskit
 from pytket.extensions.cirq import tk_to_cirq
 import cirq
+from qiskit.visualization import plot_histogram
+from qiskit.providers.ibmq import least_busy
+from qiskit.tools.monitor import job_monitor
+import matplotlib.pyplot as plt
+from typing import Tuple
+import os
 
 common_gates = ["X", "Y", "Z", "H", "S", "T", "CNOT", "CH",
                 "CY", "CZ", "CT", "CS", "SWAP", "CNOT10", "TOFFOLI"]
@@ -82,8 +88,8 @@ def apply_controlled_gate(tket_circuit, gate_string):
     else:
         raise ValueError(f"Unsupported gate '{gate}'.")
 
-
-def convert_to_tket(IATA_circuit):
+# IATA -> TKET
+def convert_IATA_to_tket(IATA_circuit):
     n = IATA_circuit.n_qubits
     tket_circuit = Circuit(n)
     dummy_index = int(IATA_circuit.index)
@@ -101,12 +107,77 @@ def convert_to_tket(IATA_circuit):
             apply_custom_gate(tket_circuit, single_gate, qubits_affected)
     return tket_circuit
 
-
-def convert_to_qiskit(IATA_circuit):
-    tket_circuit = convert_to_tket(IATA_circuit)
+# IATA -> TKET -> Qiskit
+def convert_IATA_to_qiskit(IATA_circuit):
+    tket_circuit = convert_IATA_to_tket(IATA_circuit)
     return tk_to_qiskit(tket_circuit)
 
-
-def convert_to_cirq(IATA_circuit):
-    tket_circuit = convert_to_tket(IATA_circuit)
+# IATA -> TKET -> Cirq
+def convert_IATA_to_cirq(IATA_circuit):
+    tket_circuit = convert_IATA_to_tket(IATA_circuit)
     return tk_to_cirq(tket_circuit)
+
+def run_qiskit_circuit(qc, execution_type):
+    # Choose execution backend
+    if execution_type == 0:
+        print("Running on local simulator...")
+        #for backend in Aer.backends():
+        #    print(backend)
+        backend = Aer.get_backend('qasm_simulator')
+
+    elif execution_type in [1, 2]:
+        api_key = os.getenv('API_KEY')
+        if api_key is None:
+            raise ValueError("API key not found. Please set the API_KEY environment variable.")
+
+        # Load your IBM Quantum account
+        IBMQ.save_account(api_key, overwrite=True)
+        IBMQ.load_account()
+
+        # List all providers and backends with additional details
+        print("Available providers and their backends:")
+        for provider in IBMQ.providers():
+            print("Provider:", provider)
+            for backend in provider.backends():
+                backend_config = backend.configuration()
+                backend_status = backend.status()
+                print(" - Backend:", backend.name())
+                print("   - Number of Qubits:", backend_config.n_qubits)
+                print("   - Simulator:", backend_config.simulator)
+                print("   - Operational:", backend_status.operational)
+
+        provider = IBMQ.get_provider(hub='ibm-q')
+
+        if execution_type == 1:
+            print("Running on cloud simulator...")
+            backend = provider.get_backend('ibmq_qasm_simulator')
+        elif execution_type == 2:
+            print("Running on real quantum hardware...")
+            backend = least_busy(provider.backends(filters=lambda x: x.configuration().n_qubits >= qc.num_qubits and not x.configuration().simulator and x.status().operational==True))
+
+    else:
+        print("Invalid execution type. Please choose 0, 1, or 2.")
+        return
+
+    print("Selected Backend:", backend)
+
+    # Execute the Quantum Circuit
+    job = execute(qc, backend=backend, shots=1024)
+    print("Job ID:", job.job_id())
+
+    # Monitor Job and Retrieve Results (only for real hardware)
+    if execution_type == 2:
+        job_monitor(job)
+
+    result = job.result()
+
+    # Step 7: Plot the Results
+    counts = result.get_counts(qc)
+    plot_histogram(counts)
+    plt.show()
+
+# https://quantumcomputing.stackexchange.com/questions/14164/can-i-run-cirq-on-ibmq
+def run_cirq_circuit_on_qiskit(circuit: 'cirq.Circuit', qubits: Tuple['cirq.Qid', ...], execution_type = 0):
+    qasm_output = cirq.QasmOutput((circuit.all_operations()), qubits)
+    qiskit_circuit = QuantumCircuit().from_qasm_str(str(qasm_output))
+    run_qiskit_circuit(qc = qiskit_circuit, execution_type = execution_type)
