@@ -233,7 +233,7 @@ def test_custom_gate():
     quantum_system.print_state()
     quantum_system.print_all_gates_applied()
     assert np.allclose(quantum_system.state, [0.25-0.60355j, 0, 0.60355+0.25j, 0, -0.25-0.10355j, 0, 0.10355-0.25j, 0], atol=1e-6)
-
+    # https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B1%2C1%2C%22H%22%5D%2C%5B%22Z%5E%C2%BC%22%2C1%2C%22%E2%80%A2%22%5D%2C%5B1%2C%22H%22%5D%2C%5B1%2C1%2C%22H%22%5D%2C%5B1%2C%22Z%22%5D%2C%5B1%2C%22Z%5E%C2%BD%22%5D%2C%5B%22Y%22%5D%2C%5B%22Z%5E%C2%BC%22%5D%5D%2C%22init%22%3A%5B1%2C1%5D%7D
     print("\nCustom gates tests successful!")
 
     return quantum_system
@@ -450,6 +450,22 @@ def test_run_qiskit_circuit():
 
     run_qiskit_circuit(qc = qc, execution_type = 0)
 
+def test_basic_circuit_in_qiskit():
+    IATA_circuit = test_basic_gates()
+    IATA_circuit.print_probabilities()
+    qiskit_circuit = convert_IATA_to_qiskit(IATA_circuit)
+    print(qiskit_circuit)
+    qiskit_circuit.measure_all()
+    run_qiskit_circuit(qc = qiskit_circuit, execution_type = 0)
+
+def test_custom_circuit_in_qiskit():
+    IATA_circuit = test_custom_gate()
+    IATA_circuit.print_probabilities()
+    qiskit_circuit = convert_IATA_to_qiskit(IATA_circuit)
+    print(qiskit_circuit)
+    qiskit_circuit.measure_all()
+    run_qiskit_circuit(qc = qiskit_circuit, execution_type = 0)
+
 if __name__ == "__main__":
     # test_init()
     # test_initialize_state()
@@ -465,4 +481,7 @@ if __name__ == "__main__":
     # test_run_qiskit_circuit()
     # test_convert_IATA_to_tket()
     # test_convert_IATA_to_qiskit()
-    test_convert_IATA_to_cirq(backend = 1)
+    # test_convert_IATA_to_cirq(backend = 1)
+
+    test_basic_circuit_in_qiskit()
+    test_custom_circuit_in_qiskit()
