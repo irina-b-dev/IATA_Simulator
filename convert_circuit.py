@@ -60,7 +60,8 @@ def apply_custom_gate(tket_circuit, custom_gate, qubits_affected):
 
 def apply_controlled_gate(tket_circuit, gate_string):
     # Parse the gate_string
-    match = re.match(r"Controlled-(\w+)_Cq(\d+)_Tq(\d+)", gate_string)
+    match = re.match(r"Controlled-(\w+)_Cq\[(\d+)\]_Tq(\d+)", gate_string)
+    print(gate_string)
     if not match:
         raise ValueError("Invalid gate string format.")
 
