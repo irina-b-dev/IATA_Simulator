@@ -12,7 +12,7 @@ import signal
 import time
 
 import os
-# from convert_circuit import convert_IATA_to_qiskit
+from convert_circuit import convert_IATA_to_qiskit
 
 
 host = '127.0.0.1'
@@ -43,8 +43,8 @@ shutdown_flag = threading.Event()
 
 
 def show_circuit():
-    # qiskit_circuit = convert_IATA_to_qiskit(system)
-    # print(qiskit_circuit)
+    qiskit_circuit = convert_IATA_to_qiskit(system)
+    print(qiskit_circuit)
     pass
     
 
