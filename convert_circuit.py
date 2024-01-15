@@ -67,7 +67,6 @@ def apply_custom_gate(tket_circuit, custom_gate, qubits_affected):
 def apply_controlled_gate(tket_circuit, gate_string):
     # Parse the gate_string
     match = re.match(r"Controlled-(\w+)_Cq\[(\d+)\]_Tq(\d+)", gate_string)
-    print(gate_string)
     if not match:
         raise ValueError("Invalid gate string format.")
 
@@ -117,23 +116,8 @@ def convert_IATA_to_cirq(IATA_circuit):
     tket_circuit = convert_IATA_to_tket(IATA_circuit)
     return tk_to_cirq(tket_circuit)
 
-def print_n_qubit_state(qc):
-    # Execute the circuit using the statevector simulator
-    backend = Aer.get_backend('statevector_simulator')
-    job = execute(qc, backend)
-    result = job.result()
-    state_vector = result.get_statevector(qc)
-    n = qc.num_qubits
-
-    # Print the state vector for each basis state
-    print(f"======= {n}-qubit system's state (Qiskit Circuit) =======")
-    for i, amplitude in enumerate(state_vector):
-        state = format(i, f'0{n}b')  # Convert i to an n-bit binary string
-        print(f"{state}: {amplitude:.6f}")
 
 def run_qiskit_circuit(qc, execution_type):
-    print_n_qubit_state(qc)
-
     # Choose execution backend
     if execution_type == 0:
         print("Running on local simulator...")
