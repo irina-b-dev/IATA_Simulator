@@ -22,8 +22,8 @@ def sample2quantumgenerator():
 
 def samplenrquantumgenerator(nr_q):
     qubit = NQubitSystem(nr_q)
-    qubit.apply_H_gate(0, False)
-    qubit.apply_H_gate(1, False)
+    for i in range(nr_q):
+        qubit.apply_H_gate(i, False)
     bit = qubit.produce_measurement()
     str_bit = ''.join(str(e) for e in bit)
     return str_bit
