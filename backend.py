@@ -20,7 +20,7 @@ def initial_interogation():
 
 # take input from the server and use it to apply operations and everything 
 
-def apply_operations(target_list, starting_qubit, control_qubits, gate_name, gate_matrix = [1], noise = False, name = -1):
+def apply_operations(target_list, starting_qubit, control_qubits = [], gate_name = "", gate_matrix = [1], noise = False, name = -1):
     match gate_name:
         case "H":
             target_list.apply_H_gate(starting_qubit, noise)
@@ -61,11 +61,4 @@ def apply_operations(target_list, starting_qubit, control_qubits, gate_name, gat
     target_list.print_state()
 
 
-def initialize_teleportation():
-    pass
 
-def apply_correction():
-    pass
-
-def entangle():
-    pass

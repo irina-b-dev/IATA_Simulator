@@ -149,8 +149,8 @@ def test_basic_gates():
     quantum_system.print_state()
     assert np.allclose(quantum_system.state, [0, 0.5, -0.35355, +0.35355j, -0.25-0.25j, -0.35355j, -0.5j, 0])
     # https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B%22H%22%2C%22X%22%2C%22H%22%5D%2C%5B%22Z%22%2C%22Y%22%2C%22Z%5E%C2%BD%22%5D%2C%5B%22Z%5E%C2%BC%22%5D%2C%5B%22X%22%2C%22%E2%80%A2%22%5D%2C%5B1%2C%22H%22%2C%22%E2%80%A2%22%5D%2C%5B%22Y%22%2C%22%E2%80%A2%22%5D%2C%5B1%2C%22Z%22%2C%22%E2%80%A2%22%5D%2C%5B%22Z%5E%C2%BC%22%2C%22%E2%80%A2%22%5D%2C%5B1%2C%22Z%5E%C2%BD%22%2C%22%E2%80%A2%22%5D%2C%5B%22Swap%22%2C%22Swap%22%5D%2C%5B1%2C%22%E2%80%A2%22%2C%22X%22%5D%2C%5B%22X%22%2C%22%E2%80%A2%22%2C%22%E2%80%A2%22%5D%2C%5B%22Z%5E%C2%BD%22%2C1%2C%22%E2%80%A2%22%5D%5D%2C%22init%22%3A%5B1%2C1%5D%7D
-
-    print(f"Checking qubit 0 state: {quantum_system.produce_specific_measurement(0)}\n")
+    probability_q0 , measurement_q0 = quantum_system.produce_specific_measurement(0)
+    print(f"Checking qubit 0 state: {measurement_q0}\n")
 
     quantum_system.print_probabilities()
     print(f"After measurement: {quantum_system.produce_measurement()}")

@@ -22,7 +22,7 @@ def receive_messages(client_socket):
                 if decoded_data.lower() == 'exit':
                     print("Server requested exit. Exiting.")
                     os._exit(0)
-                print(f"Received data from server: {decoded_data}")
+                print(f"\nReceived data from server: {decoded_data}")
 
         except socket.error:
             print("Error receiving data from server.")

@@ -12,6 +12,8 @@ import signal
 import time
 
 import os
+# from convert_circuit import convert_IATA_to_qiskit
+
 
 host = '127.0.0.1'
 port = 5555
@@ -39,45 +41,232 @@ lock = threading.Lock()
 shutdown_flag = threading.Event()
 
 
+
 def show_circuit():
+    # qiskit_circuit = convert_IATA_to_qiskit(system)
+    # print(qiskit_circuit)
+    pass
+    
+
+def show_probs(client_socket, qubit_array):
+
+    target_list = clients[client_socket]["qubits"]
+    
+    # initializing test list 
+    test_list = qubit_array
+
+    print(target_list)
+    print(test_list)
+    
+    check_qubit_ownership = all(ele in target_list for ele in test_list)
+    strqp = "\n"
+    if check_qubit_ownership:
+        for q in qubit_array:
+            prob, measurment = system.produce_specific_measurement(q)
+            prob100 = int(round(prob*100))
+            lines = f"Q_{q}\t"
+            for line in range(0,prob100):
+                lines += "|"
+            strprob = f" {prob100}% \n"
+            lines  += strprob   
+            strqp += lines
+
+        send_message_to_client(client_socket, 
+                            strqp) 
+
+    else:
+        send_message_to_client(client_socket, 
+                            "You do not have access to those qubits, talk to your local Eve about this \n If you are unsure about which qubits you own, use command \"mine\" ") 
+
+
+
+def show_probs_server(qubit_array):
+
+    target_list = initial_qubits
+    
+    # initializing test list 
+    test_list = qubit_array
+
+    print(target_list)
+    print(test_list)
+    
+    check_qubit_ownership = all(ele in target_list for ele in test_list)
+    strqp = "\n"
+    if check_qubit_ownership:
+        for q in qubit_array:
+            prob, measurment = system.produce_specific_measurement(q)
+            prob100 = int(round(prob*100))
+            lines = f"Q_{q}\t"
+            for line in range(0,prob100):
+                lines += "|"
+            strprob = f" {prob100}% \n"
+            lines  += strprob   
+            strqp += lines
+
+        
+        print(strqp) 
+
+    else:
+       print("you do not have those qubits") 
+
+
+def initialize_teleportation():
+    socket_Alice = 0
+    socket_Bob = 0
+    found_alice = False
+    while not found_alice:
+        alice = input("Who is Alice:")
+        # with lock:
+        socket_Alice = get_socket_id_from_alias(alice)
+        if not socket_Alice:
+            print("receiver not found!")
+        else:
+            found_alice = True
+    found_bob = False
+
+    while not found_bob:
+        bob = input("Who is Bob:")
+        # with lock:
+        socket_Bob = get_socket_id_from_alias(bob)
+        if not socket_Bob:
+            print("receiver not found!")
+        else:
+            found_bob = True
+
+    nr_qubit = int(input("Which qubit to teleport:"))
+    send_qubits_to_client(clients[socket_Alice]["alias"], [nr_qubit])
+    
+    qubit_Alice = int(input("Which qubit to send to Alice:"))
+    send_qubits_to_client(clients[socket_Alice]["alias"], [qubit_Alice])
+    
+    qubit_Bob = int(input("Which qubit to send to Bob:"))
+    send_qubits_to_client(clients[socket_Bob]["alias"], [qubit_Bob])
+
+    print("entangleling...")
+    entangle_for_teleportation(nr_qubit,qubit_Alice,qubit_Bob)
+
+    
+    pass
+
+def apply_correction(client_socket, measurment_psi, measurment_qubitA, qubitB):
+    if measurment_qubitA > 0:
+        backend.apply_operations(target_list=system, starting_qubit=qubitB, gate_name="X")
+    if measurment_psi > 0:
+        backend.apply_operations(target_list=system, starting_qubit=qubitB, gate_name="Z")
+
+    send_message_to_client(client_socket, 
+                            f"Measuring your qubit...")
+    prob, measurment_result_qubitB = system.produce_specific_measurement(qubitB)
+    send_message_to_client(client_socket, 
+                            f"Let's see what is the value of psi ...\n{measurment_result_qubitB}")
+    
+
+def entangle_for_teleportation(psi, qubitA, qubitB):
+    backend.apply_operations(target_list=system, starting_qubit=qubitA, control_qubits=[], gate_name="H")
+    backend.apply_operations(target_list=system, starting_qubit=qubitB, control_qubits=[qubitA], gate_name="X")
+    backend.apply_operations(target_list=system, starting_qubit=qubitA, control_qubits=[psi], gate_name="X")
+    backend.apply_operations(target_list=system, starting_qubit=psi, control_qubits=[], gate_name="H")
+    pass
+
+def measure_qubits_for_client(socket_client, qubit_array, collapse = False ):
+    target_list = clients[socket_client]["qubits"]
+
+    # initializing test list 
+    test_list = qubit_array
+
+    print(target_list)
+    print(test_list)
+
+    check_qubit_ownership = all(ele in target_list for ele in test_list)
+
+    if check_qubit_ownership:
+        with lock:
+            for qubit in qubit_array:
+                if collapse:
+                    prob, measurement = system.collapse_measurement(qubit)
+                    send_message_to_client(socket_client, 
+                                f"Qubit {qubit} now collapsed into {measurement}")
+                else:
+                    prob, measurement = system.produce_specific_measurement(qubit)
+                    send_message_to_client(socket_client, 
+                                f"Measurement for {qubit} is {measurement}")
+
+def measure_for_teleportation(psi, qubitA, socket_sender, socket_receiver):
+    # TODO should collapse state just to change probabilities
+    measurment_result_psi = system.collapse_measurement(psi)
+    
+    measurment_result_qubitA = system.collapse_measurement(qubitA)
+
+    qubitB = int(clients[socket_receiver]["qubits"][0])
+    
+    send_message_to_client(socket_sender, 
+                            f"Measured psi as {measurment_result_psi} and qubitA as {measurment_result_qubitA}")
+    send_message_to_client(socket_receiver, 
+                            f"You received measurement from Alice for psi as {measurment_result_psi} and qubitA as {measurment_result_qubitA}")
+    send_message_to_client(socket_receiver, 
+                            f"applying correction on your {qubitB} qubit")
+    apply_correction(socket_receiver,measurment_result_psi,measurment_result_qubitA,qubitB)
+
     pass
 
 
+def send_qubits_to_client(receiver_alias, qubit_array):
+    
+    # with lock:
+    socket_receiver = get_socket_id_from_alias(receiver_alias)
+    if not socket_receiver:
+        print("receiver not found!")
+        return
+    target_list = initial_qubits
+    # initializing test list 
+    test_list = qubit_array
+
+    check_qubit_ownership = all(ele in target_list for ele in test_list)
+
+    if check_qubit_ownership:
+        clients[socket_receiver]["qubits"].extend(qubit_array)
+        for i in qubit_array:
+            if i in initial_qubits:
+                initial_qubits.remove(i)
+
+        send_message_to_client(socket_receiver, 
+                            f"You received {qubit_array} from Eve") 
+
+    else:
+        print("you do not have access to those qubits")
+
 def send_qubits_to(sender_alias, receiver_alias, qubit_array):
     sender_socket = get_socket_id_from_alias(sender_alias)
-    with lock:
-        socket_receiver = get_socket_id_from_alias(receiver_alias)
-        if not socket_receiver:
-            send_message_to_client(sender_socket, "receiver not found!")
-            return
+    # with lock:
+    socket_receiver = get_socket_id_from_alias(receiver_alias)
+    if not socket_receiver:
+        send_message_to_client(sender_socket, "receiver not found!")
+        return
+    
+    target_list = clients[sender_socket]["qubits"]
+    
+    # initializing test list 
+    test_list = qubit_array
+
+    print(target_list)
+    print(test_list)
+    
+    check_qubit_ownership = all(ele in target_list for ele in test_list)
+
+    if check_qubit_ownership:
+        clients[socket_receiver]["qubits"] = np.append(clients[socket_receiver]["qubits"], qubit_array)
+        for i in qubit_array:
+            if i in clients[sender_socket]["qubits"]:
+                clients[sender_socket]["qubits"].remove(i)
+
+        send_message_to_client(socket_receiver, 
+                            f"You received {qubit_array} from {sender_alias}") 
+
+    else:
+        send_message_to_client(sender_socket, 
+                            "You do not have access to those qubits, talk to your local Eve about this \n If you are unsure about which qubits you own, use command \"mine\" ") 
+
         
-        target_list = clients[sender_socket]["qubits"]
-        
-        # initializing test list 
-        test_list = qubit_array
-
-        print(target_list)
-        print(test_list)
-        
-        check_qubit_ownership = all(ele in target_list for ele in test_list)
-
-        if check_qubit_ownership:
-            clients[socket_receiver]["qubits"] = np.append(clients[socket_receiver]["qubits"], qubit_array)
-            for i in qubit_array:
-                if i in clients[sender_socket]["qubits"]:
-                    clients[sender_socket]["qubits"].remove(i)
-
-            send_message_to_client(socket_receiver, 
-                                "You received {qubit_array} from {sender_alias}") 
-
-        else:
-           send_message_to_client(sender_socket, 
-                               "You do not have access to those qubits, talk to your local Eve about this \n If you are unsure about which qubits you own, use command \"mine\" ") 
-
-        
-
-
-
 def get_socket_id_from_alias(alias):
     with lock:
         for socket_id, client_info in clients.items():
@@ -89,17 +278,18 @@ def get_socket_id_from_alias(alias):
 def distribute_qubits_to_clients(num_qubits):
     with lock:
         num_clients = len(clients)
-        qubits_per_client = num_qubits // num_clients
-        remaining_qubits = num_qubits % num_clients
+        if num_clients > 0:
+            qubits_per_client = num_qubits // num_clients
+            remaining_qubits = num_qubits % num_clients
 
-        for client_socket in clients:
-            clients[client_socket]["qubits"] = initial_qubits[:qubits_per_client]
-            initial_qubits[:qubits_per_client] = []
+            for client_socket in clients:
+                clients[client_socket]["qubits"] = initial_qubits[:qubits_per_client]
+                initial_qubits[:qubits_per_client] = []
 
-        # Distribute remaining qubits to the first 'remaining_qubits' clients
-        for i, client_socket in enumerate(list(clients.keys())[:remaining_qubits]):
-            clients[client_socket]["qubits"].append(initial_qubits[i])
-        initial_qubits[:remaining_qubits] = []
+            # Distribute remaining qubits to the first 'remaining_qubits' clients
+            for i, client_socket in enumerate(list(clients.keys())[:remaining_qubits]):
+                clients[client_socket]["qubits"].append(initial_qubits[i])
+            initial_qubits[:remaining_qubits] = []
 
 
 def parse_gate_command(command_args , client_socket, server=False):
@@ -109,11 +299,93 @@ def parse_gate_command(command_args , client_socket, server=False):
     parser.add_argument('--starting_qubit', type=int, required=True, help='Starting qubit number')
     parser.add_argument('--control', nargs='+', type=int, default=[], help='List of control qubits')
     
+    try :
+        args = parser.parse_args(command_args[1:])
 
-    args = parser.parse_args(command_args[1:])
+        # Process the parsed command
+        process_gate_command(args.starting_qubit, args.control, args.gate_name, client_socket,server=server, gate_matrix=[], name=-1)
+    except argparse.ArgumentError as e:
+        print(f"Error parsing command-line arguments: {e}")
 
-    # Process the parsed command
-    process_gate_command(args.starting_qubit, args.control, args.gate_name, client_socket,server=server, gate_matrix=[], name=-1)
+
+def parse_send_command(command_args , client_socket, server=False):
+
+    parser = argparse.ArgumentParser(description="Process a send command")
+    parser.add_argument('qubits', nargs='+', type=int, help='list of qubits to send')
+    parser.add_argument('--to', type=str, required=True, help='alias of the receiver')
+    
+    try :
+        args = parser.parse_args(command_args[1:])
+
+        # Process the parsed command
+        send_qubits_to(clients[client_socket]['alias'], args.to, args.qubits)
+    except argparse.ArgumentError as e:
+        print(f"Error parsing command-line arguments: {e}")
+
+def parse_send_to_client_command(command_args):
+
+    parser = argparse.ArgumentParser(description="Process a send command")
+    parser.add_argument('qubits', nargs='+', type=int, help='list of qubits to send')
+    parser.add_argument('--to', type=str, required=True, help='alias of the receiver')
+    
+    try : 
+        args = parser.parse_args(command_args[1:])
+
+        # Process the parsed command
+        send_qubits_to_client(args.to, args.qubits)
+    except argparse.ArgumentError as e:
+        print(f"Error parsing command-line arguments: {e}")
+    
+def parse_measure_command(command_args , client_socket, server=False):
+
+    parser = argparse.ArgumentParser(description="Process measure command")
+    parser.add_argument('qubits', nargs='+', type=int, help='list of qubits to measure')
+    parser.add_argument('--collapse', type=str, default="false" , help='true or false')
+    
+    try : 
+        args = parser.parse_args(command_args[1:])
+        collapse = False
+        if args.collapse.lower() == "true":
+            measure_qubits_for_client(client_socket,args.qubits,collapse=True)
+        else:
+            measure_qubits_for_client(client_socket,args.qubits)
+
+    except argparse.ArgumentError as e:
+        print(f"Error parsing command-line arguments: {e}")
+
+
+def parse_measure_and_send_command(command_args , client_socket, server=False):
+
+    parser = argparse.ArgumentParser(description="Process measure and send command")
+    parser.add_argument('--psi', type=int, help='qubit psi')
+    parser.add_argument('--qubitA', type=int, help='qubit A')
+    parser.add_argument('--to', type=str, required=True , help='alias of the receiver')
+    
+    try:
+        args = parser.parse_args(command_args[1:])
+        socket_receiver = get_socket_id_from_alias(args.to)
+        if not socket_receiver:
+            send_message_to_client(client_socket, "Alias for receiver not found!")
+            return
+        
+        send_message_to_client(client_socket, f"Measuring and sending to {args.to}")
+        measure_for_teleportation(args.psi, args.qubitA, client_socket,socket_receiver)
+
+    except argparse.ArgumentError as e:
+        print(f"Error parsing command-line arguments: {e}")
+
+def parse_show_probs_command(command_args , client_socket, server=False):
+
+    parser = argparse.ArgumentParser(description="Process show probabilities command")
+    parser.add_argument('qubits', nargs='+', type=int, help='list of qubits to measure')
+    try: 
+        args = parser.parse_args(command_args[1:])
+        if server :
+            show_probs_server(args.qubits)
+        else:
+            show_probs(client_socket, args.qubits)
+    except argparse.ArgumentError as e:
+        print(f"Error parsing command-line arguments: {e}")
 
 
 def handle_client(client_socket, address):
@@ -124,7 +396,7 @@ def handle_client(client_socket, address):
         alias = f"Alice-{len(clients)}"
         clients[client_socket] = {"qubits": [], "alias": alias}
 
-        welcome_message = f"Hello {alias}! You are now connected. \n supported commands are: \ngate, mine, send --to, measure, send_measurement --to, exit "
+        welcome_message = f"Hello {alias}! You are now connected. \n supported commands are: \ngate, mine, send --to, measure [--collapse], measure_and_send --to, show_prob, exit "
         client_socket.send(welcome_message.encode('utf-8'))
     while not shutdown_flag.is_set():
         try:
@@ -137,25 +409,41 @@ def handle_client(client_socket, address):
                 client_socket.close()
                 break
 
-            if command.lower() == "exit":
+            elif command.lower() == "exit":
                 print(f"Connection from {address} closed")
                 with lock:
                     del clients[client_socket]
                 client_socket.close()
-                break
+                return
 
             # Split the command into a list of arguments
             command_args = command.split()
+
             print(command_args)
             if command_args[0].lower() == "gate":
                 parse_gate_command(command_args,client_socket)
+
             elif command_args[0].lower() == "mine":
                 client_str = ' '.join(map(str, clients[client_socket]["qubits"]))
                 send_message_to_client(client_socket, client_str)
+
+            elif command_args[0].lower() == "send":
+                parse_send_command(command_args, client_socket)
+                
+            elif command_args[0].lower() == "measure":
+                parse_measure_command(command_args,client_socket)
+                
+            elif command_args[0].lower() == "measure_and_send":
+                parse_measure_and_send_command(command_args,client_socket)
+
+            elif command_args[0].lower() == "show_prob":
+                parse_show_probs_command(command_args,client_socket)
             else:
                 print(f"Unknown command received from {clients[client_socket]['alias']} -a {address}: {command}")
         except Exception as e:
             print(f"Error processing command from {clients[client_socket]['alias']} -a {address}: {e}")
+            client_socket.send(f"supported commands are: \ngate, mine, send --to, measure [--collapse], measure_and_send --to, show_prob, exit")
+
 
 
 def process_gate_command(starting_qubit, control_qubits, gate_name, client_socket, server=False, gate_matrix=[], name=-1):
@@ -214,12 +502,25 @@ def process_server_message(message):
 
     command_args = message.split()
     if len(command_args) > 0:
-        if command_args[0].lower() == 'gate':
+        if command_args[0].lower() == 'exit':
+            sys.exit(0)
+        elif command_args[0].lower() == 'gate':
             print("passed here")
             parse_gate_command(command_args, 0, server=True)
         elif command_args[0].lower() == 'mine':
             print(initial_qubits)
-            
+        
+        elif command_args[0].lower() == 'send':
+            parse_send_to_client_command(command_args)
+
+        elif command_args[0].lower() == 'show_prob':
+            parse_show_probs_command(command_args,0,True)
+
+        elif command_args[0].lower() == 'show_circuit':
+            show_circuit()
+        
+        elif command_args[0].lower() == 'initialize_teleportation':  
+            initialize_teleportation()
         elif command_args[0].lower() == "distribute_qubits":
             num_qubits = 0
             print(len(command_args))
@@ -231,7 +532,7 @@ def process_server_message(message):
                 
             distribute_qubits_to_clients(num_qubits)  
         else:
-                    print(f"Unknown command,\n supported commands are: \ndistribute_qubits, gate, mine, send --to, measure, send_measurement --to, exit ")
+            print(f"Unknown command,\n supported commands are: \ndistribute_qubits, gate, mine, send --to, initialize_teleportation, show_circuit exit ")
 
 
     # Example: Process internal server messages here

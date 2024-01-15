@@ -143,7 +143,7 @@ class NQubitSystem:
             (idx, gate_name, qubits_affected, single_gate, system_gate))
 
     # Apply general gate to the state
-    def apply_gate(self, gate, n_gate=-1, starting_qubit=0, noise=False):
+    def apply_gate(self, gate, n_gate=-1, starting_qubit=0, noise=False, mul_factor = 1):
         assert 0 <= starting_qubit <= self.n_qubits - n_gate
 
         if n_gate == -1:
@@ -165,13 +165,17 @@ class NQubitSystem:
 
         # Update the state by applying the gate matrix
         self.state = np.dot(gate_matrix, self.state)
+        self.state = np.multiply(self.state,mul_factor)
 
         if noise == True:
             self.quantum_noise()
 
-        assert self.is_valid_state()
+        assert self.is_valid_state() , "state not valid"
 
+        print("state is valid!")
+        print(f"value of n_gate {n_gate}")
         qubits_affected = [starting_qubit + i for i in range(n_gate)]
+        print(f"value of n_gate {n_gate}")
         gate_name = [key for key, value in gates_map.items(
         ) if gate.shape == value[0].shape and np.all(value[0] == gate)][0]
         # self.gates_applied.append((len(self.gates_applied), gate_name, gate, qubits_affected, gate_matrix))
@@ -364,7 +368,26 @@ class NQubitSystem:
             projected = project(qubit, 1, self)
             measurement_result = 1
 
-        return measurement_result
+        return norm_projected**2, measurement_result
+    
+    def collapse_measurement(self, qubit):
+
+        prob, measurement = self.produce_specific_measurement(qubit)
+        projectors = [np.array([[1, 0], [0, 0]]), np.array([[0, 0], [0, 1]])]
+        if measurement == 0:
+            gates_map["Projector_0"] = (projectors[0], int(
+                np.log2(len(projectors[0]))))
+            print(f'measurement {measurement}')
+            self.apply_gate(projectors[0],starting_qubit=qubit, mul_factor=1/np.sqrt(prob))
+        else:
+            gates_map["Projector_1"] = (projectors[1], int(
+                np.log2(len(projectors[1]))))
+            print(f'measurement {measurement}')
+            self.apply_gate(projectors[1],starting_qubit=qubit, mul_factor=1/np.sqrt(1-prob))
+
+        print(f'after measurement {measurement}')
+        return measurement
+
 
     def apply_control(self, control_qubit, target_qubit, gate_matrix):
 
