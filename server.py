@@ -41,6 +41,13 @@ lock = threading.Lock()
 shutdown_flag = threading.Event()
 
 
+def common_member(a, b):
+    a_set = set(a)
+    b_set = set(b)
+    if len(a_set.intersection(b_set)) > 0:
+        return(True) 
+    return(False)
+
 
 def show_circuit():
     qiskit_circuit = convert_IATA_to_qiskit(system)
@@ -254,7 +261,7 @@ def send_qubits_to(sender_alias, receiver_alias, qubit_array):
     check_qubit_ownership = all(ele in target_list for ele in test_list)
 
     if check_qubit_ownership:
-        clients[socket_receiver]["qubits"] = np.append(clients[socket_receiver]["qubits"], qubit_array)
+        clients[socket_receiver]["qubits"].extend(qubit_array)
         for i in qubit_array:
             if i in clients[sender_socket]["qubits"]:
                 clients[sender_socket]["qubits"].remove(i)
@@ -459,10 +466,32 @@ def process_gate_command(starting_qubit, control_qubits, gate_name, client_socke
         target_list = initial_qubits
     else: 
         target_list = clients[client_socket]["qubits"]
+
+    target_qubits = []
+    gate = gates_map[gate_name][0]
+    n_gate = gates_map[gate_name][1]
     
+    for i in range(0,n_gate):
+        target_qubits.append(starting_qubit+i)
+
+
+    
+    
+    if common_member(control_qubits, target_qubits):
+        if server:
+            print("Target qubits cannot be the same as control qubits")
+        else:
+            send_message_to_client(client_socket, 
+                                "Target qubits cannot be the same as control qubits")
+        return
+    
+
+   
+
     # initializing test list 
     test_list = control_qubits
-    test_list.append(starting_qubit)
+    test_list.extend(target_qubits)
+    
 
     print(target_list)
     print(test_list)
@@ -476,7 +505,7 @@ def process_gate_command(starting_qubit, control_qubits, gate_name, client_socke
           send_message_to_client(client_socket, "applied gate")
         print("applying gate to system")
     elif server:
-        print("Qubits already distributed")
+        print("You do not have access to those qubits")
     else:
         send_message_to_client(client_socket, 
                                "You do not have access to those qubits, talk to your local Eve about this \n If you are unsure about which qubits you own, use command \"mine\" ")
