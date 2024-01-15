@@ -235,7 +235,7 @@ def measure_qubits_for_client(socket_client, qubit_array, collapse = False ):
         with lock:
             for qubit in qubit_array:
                 if collapse:
-                    prob, measurement = system.collapse_measurement(qubit)
+                    measurement = system.collapse_measurement(qubit)
                     send_message_to_client(socket_client, 
                                 f"Qubit {qubit} now collapsed into {measurement}")
                 else:
