@@ -96,7 +96,7 @@ def convert_IATA_to_tket(IATA_circuit):
     for i in range(0, n, 1):
         if dummy_index % 2 == 1:
             tket_circuit.X(n-i-1)
-        dummy_index = dummy_index/2
+        dummy_index = dummy_index//2
     for gate_applied in IATA_circuit.gates_applied:
         idx, gate_name, qubits_affected, single_gate, system_gate = gate_applied
         if (gate_name in common_gates):
