@@ -10,6 +10,7 @@ import backend
 import sys
 import signal
 import time
+import re
 
 import os
 from convert_circuit import convert_IATA_to_qiskit
@@ -49,6 +50,50 @@ def common_member(a, b):
     return(False)
 
 
+def is_power_of_two(n):
+    """Check if a number is a power of two."""
+    return n > 0 and (n & (n - 1)) == 0
+
+
+def parse_complex_number(input_str):
+    """Parse complex numbers in the format 'a + bj'."""
+    real_part, imag_part = map(float, re.findall(r'[-+]?\d*\.\d+|[-+]?\d+', input_str))
+    return complex(real_part, imag_part)
+
+def get_unitary_matrix():
+    """Get a square unitary matrix with dimensions that are powers of 2 from the user."""
+    # while True:
+    try:
+        matrix_name = input(f"Enter the name of your gate ")
+        n = int(input(f"Enter the dimension of the {matrix_name} matrix (power of 2): "))
+        if not is_power_of_two(n):
+            raise ValueError("Please enter a dimension that is a power of 2.")
+        
+        # Input the matrix elements
+        matrix = np.empty((n, n), dtype=complex)
+        print(f"Enter the elements of the {matrix_name} matrix separated by spaces:")
+        for i in range(n):
+            row_input = input(f"Row {i+1}: ")
+            elements = row_input.split()
+            if len(elements) != n:
+                raise ValueError(f"Please enter exactly {n} elements for row {i+1}.")
+            matrix[i, :] = [parse_complex_number(e) for e in elements]
+        
+        # Check if the matrix is unitary
+        product = np.dot(matrix, np.conj(matrix.T))
+        identity_matrix = np.eye(n)
+        if not np.allclose(product, identity_matrix):
+            raise ValueError(f"The entered {matrix_name} matrix is not unitary.")
+        
+        return matrix_name, np.conj(np.conj(matrix)), n
+    
+    except ValueError as e:
+        print(f"Error: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+
+
 def show_circuit():
     qiskit_circuit = convert_IATA_to_qiskit(system)
     print(qiskit_circuit)
@@ -57,10 +102,10 @@ def show_circuit():
 
 def show_probs(client_socket, qubit_array):
 
-    target_list = clients[client_socket]["qubits"]
+    target_list = clients[client_socket]["qubits"].copy()
     
     # initializing test list 
-    test_list = qubit_array
+    test_list = qubit_array.copy()
 
     print(target_list)
     print(test_list)
@@ -89,10 +134,10 @@ def show_probs(client_socket, qubit_array):
 
 def show_probs_server(qubit_array):
 
-    target_list = initial_qubits
+    target_list = initial_qubits.copy()
     
     # initializing test list 
-    test_list = qubit_array
+    test_list = qubit_array.copy()
 
     print(target_list)
     print(test_list)
@@ -176,10 +221,10 @@ def entangle_for_teleportation(psi, qubitA, qubitB):
     pass
 
 def measure_qubits_for_client(socket_client, qubit_array, collapse = False ):
-    target_list = clients[socket_client]["qubits"]
+    target_list = clients[socket_client]["qubits"].copy()
 
     # initializing test list 
-    test_list = qubit_array
+    test_list = qubit_array.copy()
 
     print(target_list)
     print(test_list)
@@ -224,9 +269,9 @@ def send_qubits_to_client(receiver_alias, qubit_array):
     if not socket_receiver:
         print("receiver not found!")
         return
-    target_list = initial_qubits
+    target_list = initial_qubits.copy()
     # initializing test list 
-    test_list = qubit_array
+    test_list = qubit_array.copy()
 
     check_qubit_ownership = all(ele in target_list for ele in test_list)
 
@@ -250,10 +295,10 @@ def send_qubits_to(sender_alias, receiver_alias, qubit_array):
         send_message_to_client(sender_socket, "receiver not found!")
         return
     
-    target_list = clients[sender_socket]["qubits"]
+    target_list = clients[sender_socket]["qubits"].copy()
     
     # initializing test list 
-    test_list = qubit_array
+    test_list = qubit_array.copy()
 
     print(target_list)
     print(test_list)
@@ -308,7 +353,8 @@ def parse_gate_command(command_args , client_socket, server=False):
     
     try :
         args = parser.parse_args(command_args[1:])
-
+        print(f"args control {args.control}")
+        print(f"args starting qubit {args.starting_qubit}")
         # Process the parsed command
         process_gate_command(args.starting_qubit, args.control, args.gate_name, client_socket,server=server, gate_matrix=[], name=-1)
     except argparse.ArgumentError as e:
@@ -463,9 +509,9 @@ def process_gate_command(starting_qubit, control_qubits, gate_name, client_socke
     # initializing list
     target_list = []
     if server:
-        target_list = initial_qubits
+        target_list = initial_qubits.copy()
     else: 
-        target_list = clients[client_socket]["qubits"]
+        target_list = clients[client_socket]["qubits"].copy()
 
     target_qubits = []
     gate = gates_map[gate_name][0]
@@ -489,7 +535,7 @@ def process_gate_command(starting_qubit, control_qubits, gate_name, client_socke
    
 
     # initializing test list 
-    test_list = control_qubits
+    test_list = control_qubits.copy()
     test_list.extend(target_qubits)
     
 
@@ -547,6 +593,14 @@ def process_server_message(message):
 
         elif command_args[0].lower() == 'show_circuit':
             show_circuit()
+
+        elif command_args[0].lower() == 'new_gate':
+            name, matrix, dimension = get_unitary_matrix()
+            print(matrix)
+            print(dimension)
+            Gate.create_custom_user_gate(size=dimension, matrix_values=matrix,name=name)
+        elif command_args[0].lower() == 'print_gate':
+            print(gates_map[command_args[1]][0])
         
         elif command_args[0].lower() == 'initialize_teleportation':  
             initialize_teleportation()

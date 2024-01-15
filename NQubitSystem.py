@@ -179,8 +179,9 @@ class NQubitSystem:
         gate_name = [key for key, value in gates_map.items(
         ) if gate.shape == value[0].shape and np.all(value[0] == gate)][0]
         # self.gates_applied.append((len(self.gates_applied), gate_name, gate, qubits_affected, gate_matrix))
-        self.gates_applied.append(
-            (len(self.gates_applied)+1, gate_name, qubits_affected, gate, gate_matrix))
+        if mul_factor == 1:
+            self.gates_applied.append(
+                (len(self.gates_applied)+1, gate_name, qubits_affected, gate, gate_matrix))
 
     def apply_H_gate(self, target_qubit, noise=False):
         gate = gates_map["H"][0]
