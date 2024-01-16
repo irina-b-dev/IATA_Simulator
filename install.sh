@@ -9,3 +9,4 @@ pip install pytket-qiskit
 pip install pytket-cirq
 pip install qiskit.providers.ibmq
 pip install qiskit-ibmq-provider
+pip install music21
