@@ -358,8 +358,10 @@ def parse_gate_command(command_args , client_socket, server=False):
         # Process the parsed command
         process_gate_command(args.starting_qubit, args.control, args.gate_name, client_socket,server=server, gate_matrix=[], name=-1)
         
-    except SystemExit as e:
+    except (SystemExit, argparse.ArgumentError) as e:
         print(f"Error parsing command-line arguments: {e}")
+        if not server:
+            send_message_to_client(client_socket,f"Error parsing command-line arguments: {e} \n{parser.format_help()}")
 
 
 def parse_send_command(command_args , client_socket, server=False):
@@ -373,8 +375,9 @@ def parse_send_command(command_args , client_socket, server=False):
 
         # Process the parsed command
         send_qubits_to(clients[client_socket]['alias'], args.to, args.qubits)
-    except SystemExit as e:
+    except (SystemExit, argparse.ArgumentError) as e:
         print(f"Error parsing command-line arguments: {e}")
+        send_message_to_client(client_socket,f"Error parsing command-line arguments: {e} \n{parser.format_help()}")
 
 def parse_send_to_client_command(command_args):
 
@@ -387,7 +390,7 @@ def parse_send_to_client_command(command_args):
 
         # Process the parsed command
         send_qubits_to_client(args.to, args.qubits)
-    except SystemExit as e:
+    except (SystemExit, argparse.ArgumentError) as e:
         print(f"Error parsing command-line arguments: {e}")
     
 def parse_measure_command(command_args , client_socket, server=False):
@@ -404,8 +407,9 @@ def parse_measure_command(command_args , client_socket, server=False):
         else:
             measure_qubits_for_client(client_socket,args.qubits)
 
-    except SystemExit as e:
+    except (SystemExit, argparse.ArgumentError) as e:
         print(f"Error parsing command-line arguments: {e}")
+        send_message_to_client(client_socket,f"Error parsing command-line arguments: {e}\n{parser.format_help()}")
 
 
 def parse_measure_and_send_command(command_args , client_socket, server=False):
@@ -425,8 +429,9 @@ def parse_measure_and_send_command(command_args , client_socket, server=False):
         send_message_to_client(client_socket, f"Measuring and sending to {args.to}")
         measure_for_teleportation(args.psi, args.qubitA, client_socket,socket_receiver)
 
-    except SystemExit as e:
+    except (SystemExit, argparse.ArgumentError) as e:
         print(f"Error parsing command-line arguments: {e}")
+        send_message_to_client(client_socket,f"Error parsing command-line arguments: {e}\n{parser.format_help()}")
 
 def parse_show_probs_command(command_args , client_socket, server=False):
 
@@ -438,8 +443,10 @@ def parse_show_probs_command(command_args , client_socket, server=False):
             show_probs_server(args.qubits)
         else:
             show_probs(client_socket, args.qubits)
-    except SystemExit as e:
+    except (SystemExit, argparse.ArgumentError) as e:
         print(f"Error parsing command-line arguments: {e}")
+        if not server:
+            send_message_to_client(client_socket,f"Error parsing command-line arguments: {e} \n{parser.format_help()}")
 
 
 def handle_client(client_socket, address):
@@ -496,7 +503,7 @@ def handle_client(client_socket, address):
                 print(f"Unknown command received from {clients[client_socket]['alias']} -a {address}: {command}")
         except Exception as e:
             print(f"Error processing command from {clients[client_socket]['alias']} -a {address}: {e}")
-            client_socket.send(f"supported commands are: \ngate, mine, send --to, measure [--collapse], measure_and_send --to, show_prob, exit")
+            send_message_to_client(client_socket, f"supported commands are: \ngate, mine, send --to, measure [--collapse], measure_and_send --to, show_prob, exit")
 
 
 
