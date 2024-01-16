@@ -3,8 +3,14 @@ import threading
 import sys
 import os
 
-host = '127.0.0.1'
-port = 5555
+# host = '127.0.0.1'
+# port = 5555
+
+# host = "2.tcp.eu.ngrok.io"
+# port = 12944
+
+host = input("please enter Eve address: ")
+port = int(input("please enter port: "))
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((host, port))
@@ -30,6 +36,8 @@ def receive_messages(client_socket):
 
 # receive_thread = threading.Thread(target=receive_messages)
 # receive_thread.start()
+            
+
 
 receive_thread = threading.Thread(target=receive_messages, args=(client_socket,))
 receive_thread.daemon = True  # Set as daemon thread
